@@ -29,12 +29,6 @@ class LoginController extends Controller
 
         try {
 
-            $existeUsuario = DB::select('SELECT * FROM usuario_existe(?) AS existe', [$request->nombre]);
-
-            if (count($existeUsuario) == 0 || !$existeUsuario[0]->existe) {
-                return response()->json(['mensaje' => 'El usuario no existe'], 404);
-            }
-
             $resultado = DB::select('SELECT * FROM login(?, ?)', [
                 $request->nombre,
                 $request->clave,
@@ -47,11 +41,8 @@ class LoginController extends Controller
             } else {
                 return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
             }
-
-
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al iniciar sesion el usuario: ' . $e->getMessage()], 500);
         }
-
     }
 }

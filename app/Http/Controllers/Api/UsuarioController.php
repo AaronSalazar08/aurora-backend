@@ -29,21 +29,21 @@ class UsuarioController extends Controller
 
         try {
 
-            $existe = DB::select('SELECT * FROM usuario_existe(?) AS existe', [$request->nombre]);
-            if (count($existe) > 0 && $existe[0]->existe) {
+            $existe = DB::select('SELECT * FROM usuario_existe(?)', [$request->nombre]);
+            if ($existe == true) {
                 return response()->json(['mensaje' => 'El usuario ya existe'], 409);
             }
 
             DB::statement('CALL agregar_usuario(?, ?)', [
                 $request->nombre,
-                $request->clave,
+                $request->clave
+
             ]);
 
             return response()->json(['mensaje' => 'Usuario insertado correctamente'], 201);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al insertar el usuario: ' . $e->getMessage()], 500);
         }
-
     }
 
 
