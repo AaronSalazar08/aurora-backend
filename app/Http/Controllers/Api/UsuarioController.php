@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
-class usuarioController extends Controller
+class UsuarioController extends Controller
 {
     public function AgregueUnUsuario(Request $request)
     {
