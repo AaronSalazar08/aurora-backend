@@ -85,7 +85,7 @@ return [
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '192.168.56.124'),
+            'host' => env('DB_HOST', '192.168.56.108'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'aurora_boutique'),
             'username' => env('DB_USERNAME', 'admin'),
