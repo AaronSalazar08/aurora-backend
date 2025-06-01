@@ -19,3 +19,13 @@ Route::controller(App\Http\Controllers\Api\DireccionController::class)->group(fu
 Route::get('/usuario', [App\Http\Controllers\Api\usuarioController::class, 'index']);
 Route::post('/usuario', [App\Http\Controllers\Api\UsuarioController::class, 'AgregueUnUsuario']);
 Route::post('/login', [App\Http\Controllers\Api\LoginController::class, 'InicieUnaSesion']);
+//Route::post('/registro-completo', [App\Http\Controllers\Api\RegistroCompletoController::class, 'registrarTodo']);
+
+Route::controller(App\Http\Controllers\Api\RegistroCompletoController::class)->group(function () {
+    Route::post('/registro-completo', 'registrarTodo'); // Todo en una sola petición
+    Route::post('/registrar-usuario', 'registrarUsuario');
+    Route::post('/registrar-direccion', 'registrarDireccion');
+    Route::post('/registrar-telefono', 'registrarTelefono');
+    Route::post('/registrar-correo', 'registrarCorreo');
+});
+
