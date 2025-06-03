@@ -22,7 +22,7 @@ Route::post('/login', [App\Http\Controllers\Api\LoginController::class, 'InicieU
 //Route::post('/registro-completo', [App\Http\Controllers\Api\RegistroCompletoController::class, 'registrarTodo']);
 
 Route::controller(App\Http\Controllers\Api\RegistroCompletoController::class)->group(function () {
-    Route::post('/registro-completo', 'registrarTodo'); // Todo en una sola petición
+    Route::post('/registro-completo', 'registrarTodo');
     Route::post('/registrar-usuario', 'registrarUsuario');
     Route::post('/registrar-direccion', 'registrarDireccion');
     Route::post('/registrar-telefono', 'registrarTelefono');

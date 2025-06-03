@@ -9,83 +9,91 @@ use Illuminate\Support\Facades\DB;
 class RegistroCompletoController extends Controller
 {
     /**
-     * Método completo: realiza todo el proceso (usuario, dirección, teléfono, correo)
+     * Método completo: realiza todo el proceso (usuario, dirección, teléfono, correo y cliente)
      */
     public function registrarTodo(Request $request)
     {
         try {
             DB::beginTransaction();
 
-            // Paso 1: Determinar tipo de usuario
-            $clave = $request->input('clave');
-            $tipo_usuario = $this->determinarTipoUsuario($clave);
+            // Paso 1: Agregar usuario y recuperar su ID
+            DB::statement("CALL agregar_usuario(?, ?)", [
+                $request->input('nombre_usuario'),
+                $request->input('clave')
+            ]);
+            $id_usuario = DB::table('usuario')
+                ->where('nombre', $request->input('nombre_usuario'))
+                ->orderByDesc('id')
+                ->value('id');
 
-            // Paso 2: Insertar usuario
-            $usuarioId = DB::table('usuario')->insertGetId([
-                'nombre' => $request->input('nombre'),
-                'clave' => $clave,
-                'id_tipo' => $tipo_usuario
+            // Paso 2: Agregar dirección y recuperar su ID
+            DB::statement("CALL agregar_direccion(?, ?, ?, ?, ?, ?)", [
+                $request->input('id_pais'),
+                $request->input('id_provincia'),
+                $request->input('id_canton'),
+                $request->input('id_distrito'),
+                $request->input('id_barrio'),
+                $request->input('detalle_especifico')
+            ]);
+            $id_direccion = DB::table('direccion')
+                ->orderByDesc('id')
+                ->value('id');
+
+            // Paso 3: Agregar teléfono
+            DB::statement("CALL agregar_telefono(?, ?)", [
+                $request->input('telefono'),
+                $request->input('id_tipo_telefono')
             ]);
 
-            // Paso 3: Insertar dirección
-            $direccionId = DB::table('direccion')->insertGetId([
-                'id_pais' => $request->input('id_pais'),
-                'id_provincia' => $request->input('id_provincia'),
-                'id_canton' => $request->input('id_canton'),
-                'id_distrito' => $request->input('id_distrito'),
-                'id_barrio' => $request->input('id_barrio'),
-                'detalle_especifico' => $request->input('detalle_especifico')
+            // Paso 4: Agregar correo
+            DB::statement("CALL agregar_correoelectronico(?, ?)", [
+                $request->input('correo'),
+                $request->input('id_tipo_correo')
             ]);
 
-            // Paso 4: Insertar teléfono
-            DB::table('telefono')->insert([
-                'numero' => $request->input('telefono'),
-                'id_tipo' => $request->input('id_tipo_telefono')
-            ]);
+            // Paso 5: Obtener ID de contacto (asumiendo tabla 'contacto' lo almacena)
+            $id_contacto = DB::table('contacto')
+                ->orderByDesc('id')
+                ->value('id');
 
-            // Paso 5: Insertar correo electrónico
-            DB::table('correo_electronico')->insert([
-                'nombre' => $request->input('correo'),
-                'id_tipo' => $request->input('id_tipo_correo')
+            // Paso 6: Agregar cliente
+            DB::statement("CALL agregar_clientes(?, ?, ?, ?, ?, ?, ?)", [
+                $request->input('identificacion'),
+                $request->input('nombre_cliente'),
+                $request->input('primer_apellido'),
+                $request->input('segundo_apellido'),
+                $id_direccion,
+                $id_contacto,
+                $id_usuario
             ]);
 
             DB::commit();
 
             return response()->json([
-                'mensaje' => 'Usuario registrado correctamente',
-                'usuario_id' => $usuarioId,
-                'direccion_id' => $direccionId
+                'mensaje' => 'Cliente registrado exitosamente con todos sus datos.'
             ], 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
-                'error' => 'Ocurrió un error durante el registro',
+                'error' => 'Ocurrió un error durante el registro del cliente',
                 'detalle' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * Método para registrar solo el usuario
-     */
+
+    // Métodos individuales para cada procedimiento almacenado
+
     public function registrarUsuario(Request $request)
     {
         try {
-            $clave = $request->input('clave');
-            $tipo_usuario = $this->determinarTipoUsuario($clave);
-
-            $usuarioId = DB::table('usuario')->insertGetId([
-                'nombre' => $request->input('nombre'),
-                'clave' => $clave,
-                'id_tipo' => $tipo_usuario
+            DB::statement("CALL agregar_usuario(?, ?)", [
+                $request->input('nombre_usuario'),
+                $request->input('clave')
             ]);
-
-            return response()->json([
-                'mensaje' => 'Usuario registrado',
-                'usuario_id' => $usuarioId
-            ], 201);
+            return response()->json(['mensaje' => 'Usuario registrado correctamente'], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error al registrar usuario',
@@ -94,25 +102,18 @@ class RegistroCompletoController extends Controller
         }
     }
 
-    /**
-     * Método para registrar solo la dirección
-     */
     public function registrarDireccion(Request $request)
     {
         try {
-            $direccionId = DB::table('direccion')->insertGetId([
-                'id_pais' => $request->input('id_pais'),
-                'id_provincia' => $request->input('id_provincia'),
-                'id_canton' => $request->input('id_canton'),
-                'id_distrito' => $request->input('id_distrito'),
-                'id_barrio' => $request->input('id_barrio'),
-                'detalle_especifico' => $request->input('detalle_especifico')
+            DB::statement("CALL agregar_direccion(?, ?, ?, ?, ?, ?)", [
+                $request->input('id_pais'),
+                $request->input('id_provincia'),
+                $request->input('id_canton'),
+                $request->input('id_distrito'),
+                $request->input('id_barrio'),
+                $request->input('detalle_especifico')
             ]);
-
-            return response()->json([
-                'mensaje' => 'Dirección registrada',
-                'direccion_id' => $direccionId
-            ], 201);
+            return response()->json(['mensaje' => 'Dirección registrada correctamente'], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error al registrar dirección',
@@ -121,20 +122,14 @@ class RegistroCompletoController extends Controller
         }
     }
 
-    /**
-     * Método para registrar solo el teléfono
-     */
     public function registrarTelefono(Request $request)
     {
         try {
-            DB::table('telefono')->insert([
-                'numero' => $request->input('numero'),
-                'id_tipo' => $request->input('id_tipo')
+            DB::statement("CALL agregar_telefono(?, ?)", [
+                $request->input('telefono'),
+                $request->input('id_tipo_telefono')
             ]);
-
-            return response()->json([
-                'mensaje' => 'Teléfono registrado'
-            ], 201);
+            return response()->json(['mensaje' => 'Teléfono registrado correctamente'], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error al registrar teléfono',
@@ -143,20 +138,14 @@ class RegistroCompletoController extends Controller
         }
     }
 
-    /**
-     * Método para registrar solo el correo electrónico
-     */
     public function registrarCorreo(Request $request)
     {
         try {
-            DB::table('correo_electronico')->insert([
-                'nombre' => $request->input('nombre'),
-                'id_tipo' => $request->input('id_tipo')
+            DB::statement("CALL agregar_correoelectronico(?, ?)", [
+                $request->input('correo'),
+                $request->input('id_tipo_correo')
             ]);
-
-            return response()->json([
-                'mensaje' => 'Correo registrado'
-            ], 201);
+            return response()->json(['mensaje' => 'Correo registrado correctamente'], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Error al registrar correo',
@@ -165,19 +154,24 @@ class RegistroCompletoController extends Controller
         }
     }
 
-    /**
-     * Método privado reutilizable para determinar el tipo de usuario por la clave
-     */
-    private function determinarTipoUsuario($clave)
+    public function registrarCliente(Request $request)
     {
-        if (DB::table('usuario')->where('clave', $clave)->where('id_tipo', 1)->exists()) {
-            return 1;
+        try {
+            DB::statement("CALL agregar_clientes(?, ?, ?, ?, ?, ?, ?)", [
+                $request->input('identificacion'),
+                $request->input('nombre_cliente'),
+                $request->input('primer_apellido'),
+                $request->input('segundo_apellido'),
+                $request->input('id_direccion'),
+                $request->input('id_contacto'),
+                $request->input('id_usuario')
+            ]);
+            return response()->json(['mensaje' => 'Cliente registrado correctamente'], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al registrar cliente',
+                'detalle' => $e->getMessage()
+            ], 500);
         }
-
-        if (DB::table('usuario')->where('clave', $clave)->where('id_tipo', 2)->exists()) {
-            return 2;
-        }
-
-        return 3; // Valor por defecto
     }
 }
