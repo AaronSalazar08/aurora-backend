@@ -4,70 +4,82 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB; // Asegúrate de importar el Facade DB
 
 class DireccionController extends Controller
 {
-    public function ObtenerPais()
+
+    public function getPaises()
     {
-        $paises = DB::select('SELECT * FROM mostrar_pais();');
-        return response()->json($paises);
+        try {
+
+            $paises = DB::select('SELECT * from mostrar_pais()');
+            return response()->json($paises);
+        } catch (\Exception $e) {
+
+            return response()->json(['error' => 'Error al obtener los países: ' . $e->getMessage()], 500);
+        }
     }
 
-    public function ObtenerProvincia(Request $request)
+
+
+    public function getProvincias($id_pais)
     {
-        $validator = Validator::make($request->query(), [
-            'pais_id' => 'required|integer',
-        ]);
+        try {
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            if (!is_numeric($id_pais) || $id_pais <= 0) {
+                return response()->json(['error' => 'El ID del país debe ser un entero positivo.'], 400);
+            }
+
+            $provincias = DB::select('SELECT * FROM mostrar_provincia(?)', [$id_pais]);
+            return response()->json($provincias);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al obtener las provincias: ' . $e->getMessage()], 500);
         }
-
-        $provincias = DB::select('SELECT * FROM mostrar_provincia(?)', [$request->query('pais_id')]);
-        return response()->json($provincias);
     }
 
-    public function ObtenerCanton(Request $request)
+
+    public function getCantones($id_provincia)
     {
-        $validator = Validator::make($request->query(), [
-            'provincia_id' => 'required|integer',
-        ]);
+        try {
+            if (!is_numeric($id_provincia) || $id_provincia <= 0) {
+                return response()->json(['error' => 'El ID de la provincia debe ser un entero positivo.'], 400);
+            }
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            $cantones = DB::select('SELECT * FROM mostrar_canton(?)', [$id_provincia]);
+            return response()->json($cantones);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al obtener los cantones: ' . $e->getMessage()], 500);
         }
-
-        $cantones = DB::select('SELECT * FROM mostrar_canton(?)', [$request->query('provincia_id')]);
-        return response()->json($cantones);
     }
 
-    public function ObtenerDistrito(Request $request)
+
+    public function getDistritos($id_canton)
     {
-        $validator = Validator::make($request->query(), [
-            'canton_id' => 'required|integer',
-        ]);
+        try {
+            if (!is_numeric($id_canton) || $id_canton <= 0) {
+                return response()->json(['error' => 'El ID del cantón debe ser un entero positivo.'], 400);
+            }
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            $distritos = DB::select('SELECT * FROM mostrar_distrito(?)', [$id_canton]);
+            return response()->json($distritos);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al obtener los distritos: ' . $e->getMessage()], 500);
         }
-
-        $distritos = DB::select('SELECT * FROM mostrar_distrito(?)', [$request->query('canton_id')]);
-        return response()->json($distritos);
     }
 
-    public function ObtenerBarrio(Request $request)
+
+    public function getBarrios($id_distrito)
     {
-        $validator = Validator::make($request->query(), [
-            'distrito_id' => 'required|integer',
-        ]);
+        try {
+            if (!is_numeric($id_distrito) || $id_distrito <= 0) {
+                return response()->json(['error' => 'El ID del distrito debe ser un entero positivo.'], 400);
+            }
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            $barrios = DB::select('SELECT * FROM mostrar_barrio(?)', [$id_distrito]);
+            return response()->json($barrios);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al obtener los barrios: ' . $e->getMessage()], 500);
         }
-
-        $barrios = DB::select('SELECT * FROM mostrar_barrio(?)', [$request->query('distrito_id')]);
-        return response()->json($barrios);
     }
 }

@@ -7,12 +7,27 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::controller(App\Http\Controllers\Api\DireccionController::class)->group(function () {
+    Route::get('/paises', 'getPaises');
+    Route::get('/paises/provincias/{id_pais}', 'getProvincias');
+    Route::get('/paises/provincias/cantones/{id_provincia}', 'getCantones');
+    Route::get('/paises/provincias/cantones/distritos/{id_canton}', 'getDistritos');
+    Route::get('/paises/provincias/cantones/distritos/barrios/{id_distrito}', 'getBarrios');
+});
 
-Route::get('/pais', [App\Http\Controllers\Api\DireccionController::class, 'ObtenerPais']);
-Route::get('/provincia?pais_id={id}', [App\Http\Controllers\Api\DireccionController::class, 'ObtenerProvincia']);
-Route::get('/canton?provincia_id{id}', [App\Http\Controllers\Api\DireccionController::class, 'ObtenerCanton']);
-Route::get('/distrito?canton_id{id}', [App\Http\Controllers\Api\DireccionController::class, 'ObtenerDistrito']);
-Route::get('/barrio?distrito_id{id}', [App\Http\Controllers\Api\DireccionController::class, 'ObtenerBarrio']);
+Route::get('/tiposcontacto', [App\Http\Controllers\Api\TipoContacto::class, 'index']);
 
-Route::post('/usuario', [App\Http\Controllers\Api\usuarioController::class, 'AgregueUnUsuario']);
+Route::get('/usuario', [App\Http\Controllers\Api\usuarioController::class, 'index']);
+Route::post('/usuario', [App\Http\Controllers\Api\UsuarioController::class, 'AgregueUnUsuario']);
 Route::post('/login', [App\Http\Controllers\Api\LoginController::class, 'InicieUnaSesion']);
+Route::post('/registrocompleto', [App\Http\Controllers\Api\RegistroCompletoController::class, 'registrarTodo']);
+
+
+Route::controller(App\Http\Controllers\Api\RegistroCompletoController::class)->group(function () {
+
+    Route::post('/registrar-usuario', 'registrarUsuario');
+    Route::post('/registrar-direccion', 'registrarDireccion');
+    Route::post('/registrar-telefono', 'registrarTelefono');
+    Route::post('/registrar-correo', 'registrarCorreo');
+});
+

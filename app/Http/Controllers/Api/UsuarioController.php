@@ -11,6 +11,7 @@ class UsuarioController extends Controller
 {
     public function AgregueUnUsuario(Request $request)
     {
+        // 1. Validación de los datos de entrada
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:30',
             'clave' => 'required|string|min:8',
@@ -29,19 +30,26 @@ class UsuarioController extends Controller
 
         try {
 
-            $existe = DB::select('SELECT * FROM usuario_existe(?)', [$request->nombre]);
-            if ($existe == true) {
+            $resultado_existe = DB::select('SELECT usuario_existe(?) AS usuario_ya_existe', [$request->nombre]);
+
+
+            $usuarioExiste = $resultado_existe[0]->usuario_ya_existe ?? false;
+
+
+            if ($usuarioExiste) { // Ahora esto compara el valor booleano 'true' o 'false'
                 return response()->json(['mensaje' => 'El usuario ya existe'], 409);
+            } else {
+
+                DB::statement('CALL agregar_usuario(?, ?)', [
+                    $request->nombre,
+                    $request->clave
+                ]);
+
+                return response()->json(['mensaje' => 'Usuario insertado correctamente'], 201);
             }
 
-            DB::statement('CALL agregar_usuario(?, ?)', [
-                $request->nombre,
-                $request->clave
-
-            ]);
-
-            return response()->json(['mensaje' => 'Usuario insertado correctamente'], 201);
         } catch (\Exception $e) {
+
             return response()->json(['error' => 'Error al insertar el usuario: ' . $e->getMessage()], 500);
         }
     }
@@ -50,8 +58,6 @@ class UsuarioController extends Controller
     public function index()
     {
         $usuarios = DB::select('SELECT * FROM obtener_usuarios();');
-
-
         return response()->json($usuarios);
     }
 }
