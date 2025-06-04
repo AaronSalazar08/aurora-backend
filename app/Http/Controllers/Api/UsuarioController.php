@@ -47,7 +47,6 @@ class UsuarioController extends Controller
     }
 
 
-
     public function index()
     {
         $usuarios = DB::select('SELECT * FROM obtener_usuarios();');
