@@ -58,12 +58,14 @@ class RegistroCompletoController extends Controller
             // 3) Agregar dirección
             //
             DB::statement("CALL agregar_direccion(?, ?, ?, ?, ?)", [
-                $request->input('id_pais'),
-                $request->input('id_provincia'),
-                $request->input('id_canton'),
-                $request->input('id_distrito'),
-                $request->input('id_barrio'),
-            ]);
+    $request->input('id_pais'),
+    $request->input('id_provincia'),
+    $request->input('id_canton'),
+    $request->input('id_distrito'),
+    $request->input('id_barrio'),
+    
+]);
+
             // Obtener el ID de la dirección recién creada
             $id_direccion = DB::table('direccion')
                 ->orderByDesc('id')
