@@ -37,7 +37,7 @@ class LoginController extends Controller
                 $user = $resultado[0];
                 return response()->json([
                     'mensaje' => 'Bienvenido ' . $user->nombre,
-                    'id_tipo' => $user->id_tipo,   // ahora enviamos id_tipo
+                    'id_tipo' => $user->id_tipo,
                 ], 200);
             } else {
                 return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
