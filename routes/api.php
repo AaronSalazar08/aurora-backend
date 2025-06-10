@@ -45,3 +45,7 @@ Route::controller(RegistroCompletoController::class)->group(function () {
 
 // ✅ PRODUCTO 
 Route::post('/productos', [ProductoController::class, 'agregarProducto']);
+Route::put('/productos/{codigo}', [ProductoController::class, 'actualizarProducto']);
+Route::delete('/productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
+Route::get('/productos/{codigo}', [ProductoController::class, 'buscarProducto']);
+
