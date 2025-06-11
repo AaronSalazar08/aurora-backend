@@ -12,6 +12,11 @@ use App\Http\Controllers\Api\RegistroCompletoController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\PedidoController;
 use App\Http\Controllers\Api\ClienteController;
+use App\Http\Controllers\Api\PedidoEstadoController;
+use App\Http\Controllers\Api\FacturaController;
+use App\Http\Controllers\Api\ClienteConsultaController;
+use App\Http\Controllers\Api\ProductoFiltroController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -60,4 +65,30 @@ Route::controller(PedidoController::class)->group(function () {
 Route::controller(ClienteController::class)->group(function () {
     Route::put('/clientes/{identificacion}', 'actualizarCliente');
     Route::delete('/clientes/{identificacion}', 'eliminarCliente');
+});
+
+// Estado de pedidos (admin y personal de envíos)
+Route::controller(PedidoEstadoController::class)->group(function () {
+    Route::put('/pedidos/admin/estado', 'actualizarEstadoAdmin');
+    Route::put('/pedidos/envios/estado', 'actualizarEstadoEnvios');
+});
+
+// Facturas
+Route::controller(FacturaController::class)->group(function () {
+    Route::get('/facturas', 'todas');
+    Route::get('/facturas/cliente/{id}', 'porCliente');
+});
+
+// Consultas de clientes
+Route::controller(ClienteConsultaController::class)->group(function () {
+    Route::get('/clientes', 'todos');
+    Route::get('/clientes/{cedula}', 'porIdentificacion');
+    Route::get('/clientes/usuario/{id_usuario}', 'porUsuario');
+});
+
+// Productos por categoría
+Route::controller(ProductoFiltroController::class)->group(function () {
+    Route::get('/productos/ropa', 'ropa');
+    Route::get('/productos/accesorios', 'accesorios');
+    Route::get('/productos/moda', 'moda');
 });
