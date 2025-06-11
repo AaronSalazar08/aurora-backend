@@ -28,21 +28,24 @@ class LoginController extends Controller
         }
 
         try {
-
             $resultado = DB::select('SELECT * FROM login(?, ?)', [
                 $request->nombre,
                 $request->clave,
             ]);
 
             if (count($resultado) > 0) {
+                $user = $resultado[0];
                 return response()->json([
-                    'mensaje' => 'Bienvenido ' . $resultado[0]->nombre
+                    'mensaje' => 'Bienvenido ' . $user->nombre,
+                    'id_tipo' => $user->id_tipo,
                 ], 200);
             } else {
                 return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
             }
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al iniciar sesion el usuario: ' . $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'Error al iniciar sesión: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

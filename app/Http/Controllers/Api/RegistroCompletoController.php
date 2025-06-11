@@ -8,15 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class RegistroCompletoController extends Controller
 {
-    /**
-     * Registra en una sola transacción:
-     *   1) Usuario
-     *   2) Dirección
-     *   3) Teléfono
-     *   4) Correo electrónico
-     *   5) Cliente
-     *   6) Contacto (vincula cliente con teléfono y correo)
-     */
+
     public function registrarTodo(Request $request)
     {
         // 1) Validación de los campos requeridos
@@ -58,13 +50,13 @@ class RegistroCompletoController extends Controller
             // 3) Agregar dirección
             //
             DB::statement("CALL agregar_direccion(?, ?, ?, ?, ?)", [
-    $request->input('id_pais'),
-    $request->input('id_provincia'),
-    $request->input('id_canton'),
-    $request->input('id_distrito'),
-    $request->input('id_barrio'),
-    
-]);
+                $request->input('id_pais'),
+                $request->input('id_provincia'),
+                $request->input('id_canton'),
+                $request->input('id_distrito'),
+                $request->input('id_barrio'),
+
+            ]);
 
             // Obtener el ID de la dirección recién creada
             $id_direccion = DB::table('direccion')
