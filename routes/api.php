@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\RegistroCompletoController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\PedidoController;
-
+use App\Http\Controllers\Api\ClienteController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -55,4 +55,9 @@ Route::controller(PedidoController::class)->group(function () {
     Route::put('/pedidos/{codigo}', 'actualizarPedido');
     Route::delete('/pedidos/{codigo}', 'eliminarPedido');
     Route::get('/pedidos/{codigo}', 'buscarPedido');
+});
+
+Route::controller(ClienteController::class)->group(function () {
+    Route::put('/clientes/{identificacion}', 'actualizarCliente');
+    Route::delete('/clientes/{identificacion}', 'eliminarCliente');
 });
