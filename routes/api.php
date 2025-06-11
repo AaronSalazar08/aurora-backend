@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\RegistroCompletoController;
 use App\Http\Controllers\Api\ProductoController; 
+use App\Http\Controllers\Api\PedidoController;
 
 // ✅ RUTA PROTEGIDA CON SANCTUM
 Route::get('/user', function (Request $request) {
@@ -49,3 +50,9 @@ Route::put('/productos/{codigo}', [ProductoController::class, 'actualizarProduct
 Route::delete('/productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
 Route::get('/productos/{codigo}', [ProductoController::class, 'buscarProducto']);
 
+Route::controller(PedidoController::class)->group(function () {
+    Route::post('/pedidos', 'agregarPedido');
+    Route::put('/pedidos/{codigo}', 'actualizarPedido');
+    Route::delete('/pedidos/{codigo}', 'eliminarPedido');
+    Route::get('/pedidos/{codigo}', 'buscarPedido');
+});
