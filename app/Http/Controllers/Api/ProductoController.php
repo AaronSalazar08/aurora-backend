@@ -40,7 +40,7 @@ class ProductoController extends Controller
         ]);
 
         try {
-            DB::statement("CALL agregar_productos(?, ?, ?, ?, ?, ?, ?, ?)", [
+            DB::statement("CALL agregar_producto_admin(?, ?, ?, ?, ?, ?, ?, ?)", [
                 $request->input('codigo'),
                 $request->input('nombre'),
                 $request->input('descripcion'),
