@@ -37,6 +37,8 @@ Route::get('/tiposcontacto', [TipoContacto::class, 'index']);
 
 Route::get('/usuario', [UsuarioController::class, 'index']);
 Route::post('/usuario', [UsuarioController::class, 'AgregueUnUsuario']);
+Route::post('/personalenvios', [UsuarioController::class, 'agregarPersonalEnvios']);
+Route::get('/listarpersonalenvios', [UsuarioController::class, 'listarPersonalEnvios']);
 Route::post('/login', [LoginController::class, 'InicieUnaSesion']);
 
 
@@ -49,12 +51,15 @@ Route::controller(RegistroCompletoController::class)->group(function () {
     Route::post('/registrar-correo', 'registrarCorreo');
 });
 
-
+Route::get('/listarproductos', [ProductoController::class, 'listarProductos']);
+Route::get('/categoriaproductos', [ProductoController::class, 'listarCategorias']);
 Route::post('/productos', [ProductoController::class, 'agregarProducto']);
 Route::put('/productos/{codigo}', [ProductoController::class, 'actualizarProducto']);
 Route::delete('/productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
 Route::get('/productos/{codigo}', [ProductoController::class, 'buscarProducto']);
 
+
+Route::get('/listarpedidos', [PedidoController::class, 'listarPedidos']);
 Route::controller(PedidoController::class)->group(function () {
     Route::post('/pedidos', 'agregarPedido');
     Route::put('/pedidos/{codigo}', 'actualizarPedido');
@@ -67,7 +72,8 @@ Route::controller(ClienteController::class)->group(function () {
     Route::delete('/clientes/{identificacion}', 'eliminarCliente');
 });
 
-// Estado de pedidos (admin y personal de envíos)
+Route::get('/estados-aprobacion', [PedidoEstadoController::class, 'listarEstadosAprobacion']);
+
 Route::controller(PedidoEstadoController::class)->group(function () {
     Route::put('/pedidos/admin/estado', 'actualizarEstadoAdmin');
     Route::put('/pedidos/envios/estado', 'actualizarEstadoEnvios');

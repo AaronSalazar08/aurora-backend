@@ -29,7 +29,7 @@ class ProductoController extends Controller
     {
         // Validación básica
         $request->validate([
-            'codigo' => 'required|string|max:50',
+            'codigo' => 'required|integer|min:1',
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:1000',
             'precio' => 'required|numeric|min:0',
@@ -134,6 +134,20 @@ class ProductoController extends Controller
             ], 500);
         }
     }
+
+    public function listarProductos()
+    {
+        try {
+            $productos = DB::select('SELECT * FROM mostrar_todos_los_productos()');
+            return response()->json($productos, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar los productos.',
+                'detalle' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 }

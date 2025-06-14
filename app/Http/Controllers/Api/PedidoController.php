@@ -9,8 +9,25 @@ use Exception;
 
 class PedidoController extends Controller
 {
+
+
+    public function listarPedidos()
+    {
+        try {
+            $pedidos = DB::select('SELECT * FROM mostrar_todos_los_pedidos()');
+            return response()->json($pedidos, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar los pedidos.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function agregarPedido(Request $request)
     {
+
+
         try {
             DB::statement('CALL agregar_pedidos(?, ?, ?, ?, ?)', [
                 $request->codigo,

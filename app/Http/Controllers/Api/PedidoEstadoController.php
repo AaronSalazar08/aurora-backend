@@ -8,6 +8,21 @@ use Illuminate\Support\Facades\DB;
 
 class PedidoEstadoController extends Controller
 {
+
+    public function listarEstadosAprobacion()
+    {
+        try {
+            $estados = DB::select('SELECT * FROM listar_estados_pendiente_cancelado()');
+            return response()->json($estados, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar los estados.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
     public function actualizarEstadoAdmin(Request $request)
     {
         $request->validate([

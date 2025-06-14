@@ -9,6 +9,65 @@ use Illuminate\Support\Facades\Validator;
 
 class UsuarioController extends Controller
 {
+
+
+    public function listarPersonalEnvios()
+    {
+        try {
+            $usuarios = DB::select('SELECT * FROM listar_personal_envios()');
+            return response()->json($usuarios, 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar los usuarios.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function agregarPersonalEnvios(Request $request)
+    {
+        $request->validate([
+            'nombre' => 'required|string|max:100',
+            'clave' => 'required|string|min:8|max:100'
+        ]);
+
+        try {
+            DB::statement("CALL agregar_usuario_personal_envios(?, ?)", [
+                $request->input('nombre'),
+                $request->input('clave')
+            ]);
+
+            return response()->json([
+                'mensaje' => 'Usuario de envíos agregado correctamente.'
+            ], 201);
+
+        } catch (\Exception $e) {
+            $mensajeError = $e->getMessage();
+
+
+            if (str_contains($mensajeError, 'ya existe')) {
+                return response()->json([
+                    'error' => 'El usuario ya existe. Intente con otro nombre.'
+                ], 409);
+            }
+
+            if (str_contains($mensajeError, 'Tipo_usuario Personal Envios no existe')) {
+                return response()->json([
+                    'error' => 'El tipo de usuario "Personal Envios" no está definido en la base de datos.'
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => 'Error inesperado al registrar el usuario.',
+                'detalle' => $mensajeError
+            ], 500);
+        }
+    }
+
+
+
+
     public function AgregueUnUsuario(Request $request)
     {
         // 1. Validación de los datos de entrada
