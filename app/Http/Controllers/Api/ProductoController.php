@@ -132,6 +132,7 @@ class ProductoController extends Controller
                 'error' => 'Error al buscar el producto.',
                 'detalle' => $e->getMessage()
             ], 500);
+            
         }
     }
 
