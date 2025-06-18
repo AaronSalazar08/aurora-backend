@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\PedidoEstadoController;
 use App\Http\Controllers\Api\FacturaController;
 use App\Http\Controllers\Api\ClienteConsultaController;
 use App\Http\Controllers\Api\ProductoFiltroController;
+use App\Http\Controllers\Api\ResenaController;
+use App\Http\Controllers\Api\MetodoPagoController;
 
 
 Route::get('/user', function (Request $request) {
@@ -61,11 +63,20 @@ Route::get('/productos/{codigo}', [ProductoController::class, 'buscarProducto'])
 
 Route::get('/listarpedidos', [PedidoController::class, 'listarPedidos']);
 Route::controller(PedidoController::class)->group(function () {
+    Route::get('/pedidos/pendientes', 'pendientes');
+    Route::get('/pedidos/enproceso', 'enProceso');
+    Route::get('/pedidos/enviados', 'enviados');
+    Route::get('/pedidos/entregados', 'entregados');
+    Route::get('/pedidos/cliente/{cedula}', 'pedidosPorCliente');
+    
+    // ESTA VA AL FINAL
+    Route::get('/pedidos/{codigo}', 'buscarPedido');
+    
     Route::post('/pedidos', 'agregarPedido');
     Route::put('/pedidos/{codigo}', 'actualizarPedido');
     Route::delete('/pedidos/{codigo}', 'eliminarPedido');
-    Route::get('/pedidos/{codigo}', 'buscarPedido');
 });
+
 
 Route::controller(ClienteController::class)->group(function () {
     Route::put('/clientes/{identificacion}', 'actualizarCliente');
@@ -83,6 +94,8 @@ Route::controller(PedidoEstadoController::class)->group(function () {
 Route::controller(FacturaController::class)->group(function () {
     Route::get('/facturas', 'todas');
     Route::get('/facturas/cliente/{id}', 'porCliente');
+    Route::post('/facturas/procesar', [FacturaController::class, 'procesarFactura']);
+
 });
 
 // Consultas de clientes
@@ -98,3 +111,7 @@ Route::controller(ProductoFiltroController::class)->group(function () {
     Route::get('/productos/accesorios', 'accesorios');
     Route::get('/productos/moda', 'moda');
 });
+
+Route::get('/resenas/{id}', [ResenaController::class, 'buscarResena']);
+
+Route::get('/tipospago', [MetodoPagoController::class, 'listarTipos']);

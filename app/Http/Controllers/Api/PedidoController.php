@@ -16,7 +16,7 @@ class PedidoController extends Controller
         try {
             $pedidos = DB::select('SELECT * FROM mostrar_todos_los_pedidos()');
             return response()->json($pedidos, 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'No se pudieron cargar los pedidos.',
                 'detalle' => $e->getMessage()
@@ -97,4 +97,36 @@ class PedidoController extends Controller
             ], 500);
         }
     }
+
+    public function pedidosPorCliente($cedula)
+{
+    try {
+        $pedidos = DB::select('SELECT * FROM mostrar_pedidos_del_cliente(?)', [$cedula]);
+
+        return response()->json($pedidos);
+    } catch (Exception $e) {
+        return response()->json([
+            'error' => 'No se pudieron obtener los pedidos del cliente.',
+            'detalle' => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function pendientes() {
+    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_pendientes()'));
+}
+
+public function enProceso() {
+    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_en_proceso()'));
+}
+
+public function enviados() {
+    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_enviados()'));
+}
+
+public function entregados() {
+    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_entregados()'));
+}
+
+
 }
