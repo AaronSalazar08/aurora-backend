@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Http\Request;
 class FacturaController extends Controller
 {
     public function todas()
@@ -32,4 +32,23 @@ class FacturaController extends Controller
             ], 500);
         }
     }
+
+    public function procesarFactura(Request $request)
+{
+    $request->validate([
+        'codigo_pedido' => 'required|integer'
+    ]);
+
+    try {
+        DB::statement('CALL procesar_factura(?)', [$request->codigo_pedido]);
+
+        return response()->json(['mensaje' => 'Factura procesada exitosamente.'], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'No se pudo procesar la factura.',
+            'detalle' => $e->getMessage()
+        ], 500);
+    }
+}
+
 }
