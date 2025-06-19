@@ -9,42 +9,55 @@ use Illuminate\Support\Facades\Validator;
 
 class LoginController extends Controller
 {
-    public function InicieUnaSesion(Request $request)
+    /**
+     * Maneja el login llamando únicamente a la función almacenada.
+     */
+    public function login(Request $request)
     {
+        // 1) Validar entrada
         $validator = Validator::make($request->all(), [
             'nombre' => 'required|string|max:30',
             'clave' => 'required|string|min:8',
         ], [
             'nombre.required' => 'El nombre es obligatorio.',
-            'nombre.string' => 'El nombre debe ser una cadena de texto.',
-            'nombre.max' => 'El nombre no puede tener más de 30 caracteres.',
             'clave.required' => 'La clave es obligatoria.',
-            'clave.string' => 'La clave debe ser una cadena de texto.',
             'clave.min' => 'La clave debe tener al menos 8 caracteres.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json(
+                $validator->errors(),
+                422
+            );
         }
 
         try {
-            $resultado = DB::select('SELECT * FROM login(?, ?)', [
-                $request->nombre,
-                $request->clave,
+            // 2) Llamar a la función SQL
+            $rows = DB::select('SELECT * FROM login(?, ?)', [
+                $request->input('nombre'),
+                $request->input('clave'),
             ]);
 
-            if (count($resultado) > 0) {
-                $user = $resultado[0];
-                return response()->json([
-                    'mensaje' => 'Bienvenido ' . $user->nombre,
-                    'id_tipo' => $user->id_tipo,
-                ], 200);
-            } else {
-                return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
+            // 3) Verificar credenciales
+            if (empty($rows)) {
+                return response()->json(
+                    ['mensaje' => 'Credenciales incorrectas'],
+                    401
+                );
             }
-        } catch (\Exception $e) {
+
+            // 4) Devolver el primer registro (id, nombre, id_tipo)
+            $user = $rows[0];
             return response()->json([
-                'error' => 'Error al iniciar sesión: ' . $e->getMessage()
+                'id' => $user->id,
+                'nombre' => $user->nombre,
+                'id_tipo' => $user->id_tipo,
+            ], 200);
+
+        } catch (\Exception $e) {
+            // 5) Error interno
+            return response()->json([
+                'error' => 'Error interno: ' . $e->getMessage()
             ], 500);
         }
     }

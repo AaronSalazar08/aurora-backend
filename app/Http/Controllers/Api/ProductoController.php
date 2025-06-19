@@ -132,7 +132,7 @@ class ProductoController extends Controller
                 'error' => 'Error al buscar el producto.',
                 'detalle' => $e->getMessage()
             ], 500);
-            
+
         }
     }
 
@@ -145,6 +145,28 @@ class ProductoController extends Controller
             return response()->json([
                 'error' => 'No se pudieron cargar los productos.',
                 'detalle' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function detalleProducto($codigo)
+    {
+        try {
+            $resultado = DB::select(
+                'SELECT * FROM mostrar_detalle_producto(?)',
+                [$codigo]
+            );
+
+            if (empty($resultado)) {
+                return response()->json(['mensaje' => 'Producto no encontrado'], 404);
+            }
+
+            return response()->json($resultado[0], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al obtener el detalle del producto.',
+                'detalle' => $e->getMessage()
             ], 500);
         }
     }

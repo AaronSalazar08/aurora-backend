@@ -3,11 +3,11 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-
+// Controllers
+use App\Http\Controllers\Api\LoginController;
+use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\DireccionController;
 use App\Http\Controllers\Api\TipoContacto;
-use App\Http\Controllers\Api\UsuarioController;
-use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\RegistroCompletoController;
 use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\PedidoController;
@@ -18,110 +18,124 @@ use App\Http\Controllers\Api\ClienteConsultaController;
 use App\Http\Controllers\Api\ProductoFiltroController;
 use App\Http\Controllers\Api\ResenaController;
 use App\Http\Controllers\Api\MetodoPagoController;
+use App\Http\Controllers\Api\CarritoController;
 
+/*
+|--------------------------------------------------------------------------
+| Rutas públicas
+|--------------------------------------------------------------------------
+*/
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Login
+Route::post('login', [LoginController::class, 'login']);
 
-
+// Direcciones
 Route::controller(DireccionController::class)->group(function () {
-    Route::get('/paises', 'getPaises');
-    Route::get('/paises/provincias/{id_pais}', 'getProvincias');
-    Route::get('/paises/provincias/cantones/{id_provincia}', 'getCantones');
-    Route::get('/paises/provincias/cantones/distritos/{id_canton}', 'getDistritos');
-    Route::get('/paises/provincias/cantones/distritos/barrios/{id_distrito}', 'getBarrios');
+    Route::get('paises', 'getPaises');
+    Route::get('paises/provincias/{id_pais}', 'getProvincias');
+    Route::get('paises/provincias/cantones/{id_provincia}', 'getCantones');
+    Route::get('paises/provincias/cantones/distritos/{id_canton}', 'getDistritos');
+    Route::get('paises/provincias/cantones/distritos/barrios/{id_distrito}', 'getBarrios');
 });
 
+// Tipos de contacto
+Route::get('tipos-contacto', [TipoContacto::class, 'index']);
 
-Route::get('/tiposcontacto', [TipoContacto::class, 'index']);
+// Registro completo
+Route::post('registro-completo', [RegistroCompletoController::class, 'registrarTodo']);
 
-
-Route::get('/usuario', [UsuarioController::class, 'index']);
-Route::post('/usuario', [UsuarioController::class, 'AgregueUnUsuario']);
-Route::post('/personalenvios', [UsuarioController::class, 'agregarPersonalEnvios']);
-Route::get('/listarpersonalenvios', [UsuarioController::class, 'listarPersonalEnvios']);
-Route::post('/login', [LoginController::class, 'InicieUnaSesion']);
-
-
-Route::post('/registrocompleto', [RegistroCompletoController::class, 'registrarTodo']);
-
-Route::controller(RegistroCompletoController::class)->group(function () {
-    Route::post('/registrar-usuario', 'registrarUsuario');
-    Route::post('/registrar-direccion', 'registrarDireccion');
-    Route::post('/registrar-telefono', 'registrarTelefono');
-    Route::post('/registrar-correo', 'registrarCorreo');
+Route::prefix('registro')->controller(RegistroCompletoController::class)->group(function () {
+    Route::post('usuario', 'registrarUsuario');
+    Route::post('direccion', 'registrarDireccion');
+    Route::post('telefono', 'registrarTelefono');
+    Route::post('correo', 'registrarCorreo');
 });
 
-Route::get('/listarproductos', [ProductoController::class, 'listarProductos']);
-Route::get('/categoriaproductos', [ProductoController::class, 'listarCategorias']);
-Route::post('/productos', [ProductoController::class, 'agregarProducto']);
-Route::put('/productos/{codigo}', [ProductoController::class, 'actualizarProducto']);
-Route::delete('/productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
-Route::get('/productos/{codigo}', [ProductoController::class, 'buscarProducto']);
+// Productos (lectura pública)
+Route::get('productos', [ProductoController::class, 'listarProductos']);
+Route::get('productos/detalle/{codigo}', [ProductoController::class, 'detalleProducto']);
+Route::get('productos/categorias', [ProductoController::class, 'listarCategorias']);
 
+// Pedidos (lectura pública)
+Route::get('pedidos', [PedidoController::class, 'listarPedidos']);
+Route::get('pedidos/cliente/{cedula}', [PedidoController::class, 'pedidosPorCliente']);
+Route::get('pedidos/pendientes', [PedidoController::class, 'pendientes']);
+Route::get('pedidos/enproceso', [PedidoController::class, 'enProceso']);
+Route::get('pedidos/enviados', [PedidoController::class, 'enviados']);
+Route::get('pedidos/entregados', [PedidoController::class, 'entregados']);
+Route::get('pedidos/{codigo}', [PedidoController::class, 'buscarPedido']);
 
-Route::get('/listarpedidos', [PedidoController::class, 'listarPedidos']);
-Route::controller(PedidoController::class)->group(function () {
-    Route::get('/pedidos/pendientes', 'pendientes');
-    Route::get('/pedidos/enproceso', 'enProceso');
-    Route::get('/pedidos/enviados', 'enviados');
-    Route::get('/pedidos/entregados', 'entregados');
-    Route::get('/pedidos/cliente/{cedula}', 'pedidosPorCliente');
-
-    // ESTA VA AL FINAL
-    Route::get('/pedidos/{codigo}', 'buscarPedido');
-
-    Route::post('/pedidos', 'agregarPedido');
-    Route::put('/pedidos/{codigo}', 'actualizarPedido');
-    Route::delete('/pedidos/{codigo}', 'eliminarPedido');
-});
-
-
-Route::controller(ClienteController::class)->group(function () {
-    Route::put('/clientes/{identificacion}', 'actualizarCliente');
-    Route::delete('/clientes/{identificacion}', 'eliminarCliente');
-});
-
-Route::get('/estados-aprobacion', [PedidoEstadoController::class, 'listarEstadosAprobacion']);
-
-Route::controller(PedidoEstadoController::class)->group(function () {
-    Route::put('/pedidos/admin/estado', 'actualizarEstadoAdmin');
-    Route::put('/pedidos/envios/estado', 'actualizarEstadoEnvios');
-});
-
-// Facturas
-Route::controller(FacturaController::class)->group(function () {
-    Route::get('/facturas', 'todas');
-    Route::get('/facturas/cliente/{id}', 'porCliente');
-    Route::get('/facturas/{id}', 'detalle');
-    Route::post('/facturas/procesar', 'procesarFactura');
-    Route::put('/facturas/{id}', 'actualizar');
-    Route::delete('/facturas/{id}', 'eliminar');
-});
-
+// Facturas (lectura pública)
+Route::get('facturas', [FacturaController::class, 'todas']);
+Route::get('facturas/cliente/{id}', [FacturaController::class, 'porCliente']);
+Route::get('facturas/{id}', [FacturaController::class, 'detalle']);
 
 // Consultas de clientes
-Route::controller(ClienteConsultaController::class)->group(function () {
-    Route::get('/clientes', 'todos');
-    Route::get('/clientes/{cedula}', 'porIdentificacion');
-    Route::get('/clientes/usuario/{id_usuario}', 'porUsuario');
+Route::get('clientes', [ClienteConsultaController::class, 'todos']);
+Route::get('clientes/{cedula}', [ClienteConsultaController::class, 'porIdentificacion']);
+Route::get('clientes/usuario/{id}', [ClienteConsultaController::class, 'porUsuario']);
+
+// Filtros de productos
+Route::get('productos/ropa', [ProductoFiltroController::class, 'ropa']);
+Route::get('productos/accesorios', [ProductoFiltroController::class, 'accesorios']);
+Route::get('productos/moda', [ProductoFiltroController::class, 'moda']);
+
+// Reseñas y métodos de pago (públicos)
+Route::get('buscar-resena/{id}', [ResenaController::class, 'buscarResena']);
+Route::get('tipos-pago', [MetodoPagoController::class, 'listarTipos']);
+
+/*
+|--------------------------------------------------------------------------
+| Rutas protegidas (requieren token Sanctum)
+|--------------------------------------------------------------------------
+*/
+
+// Perfil
+Route::get('user', [LoginController::class, 'perfil']);
+
+// Usuarios
+Route::get('usuarios', [UsuarioController::class, 'index']);
+Route::post('usuarios', [UsuarioController::class, 'agregarUsuario']);
+
+// Personal de envíos
+Route::get('usuarios/personal-envios', [UsuarioController::class, 'listarPersonalEnvios']);
+Route::post('usuarios/personal-envios', [UsuarioController::class, 'agregarPersonalEnvios']);
+
+// CRUD Productos
+Route::post('productos', [ProductoController::class, 'agregarProducto']);
+Route::put('productos/{codigo}', [ProductoController::class, 'actualizarProducto']);
+Route::delete('productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
+Route::get('productos/{codigo}', [ProductoController::class, 'buscarProducto']);
+
+// CRUD Pedidos
+Route::post('pedidos', [PedidoController::class, 'agregarPedido']);
+Route::put('pedidos/{codigo}', [PedidoController::class, 'actualizarPedido']);
+Route::delete('pedidos/{codigo}', [PedidoController::class, 'eliminarPedido']);
+
+// Clientes (update/delete)
+Route::put('clientes/{identificacion}', [ClienteController::class, 'actualizarCliente']);
+Route::delete('clientes/{identificacion}', [ClienteController::class, 'eliminarCliente']);
+
+// Estados de pedido
+Route::put('pedidos/admin/estado', [PedidoEstadoController::class, 'actualizarEstadoAdmin']);
+Route::put('pedidos/envios/estado', [PedidoEstadoController::class, 'actualizarEstadoEnvios']);
+
+// Facturas (write)
+Route::post('facturas/procesar', [FacturaController::class, 'procesarFactura']);
+Route::put('facturas/{id}', [FacturaController::class, 'actualizar']);
+Route::delete('facturas/{id}', [FacturaController::class, 'eliminar']);
+
+// Reseñas (CRUD)
+Route::get('resenas', [ResenaController::class, 'ListarResenas']);
+Route::get('resenas/{id}', [ResenaController::class, 'verdetalleResena']);
+Route::post('resenas', [ResenaController::class, 'agregarResena']);
+Route::delete('resenas/{id}', [ResenaController::class, 'eliminarResena']);
+
+// Carrito
+Route::prefix('carrito')->group(function () {
+    Route::get('{codigo_pedido}', [CarritoController::class, 'index']);
+    Route::post('agregar', [CarritoController::class, 'agregarProducto']);
+    Route::put('{id}', [CarritoController::class, 'actualizarProducto']);
+    Route::delete('{id}', [CarritoController::class, 'eliminarProducto']);
 });
 
-// Productos por categoría
-Route::controller(ProductoFiltroController::class)->group(function () {
-    Route::get('/productos/ropa', 'ropa');
-    Route::get('/productos/accesorios', 'accesorios');
-    Route::get('/productos/moda', 'moda');
-});
-
-Route::get('/buscarResena/{id}', [ResenaController::class, 'buscarResena']);
-
-Route::get('/tipospago', [MetodoPagoController::class, 'listarTipos']);
-
-Route::controller(ResenaController::class)->group(function () {
-    Route::get('/resenas', 'ListarResenas');
-    Route::get('/resenas/{id}', 'verdetalleResena');
-    Route::post('/resenas', 'agregarResena');
-    Route::delete('/resenas/{id}', 'eliminarResena');
-});

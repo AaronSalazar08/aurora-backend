@@ -26,21 +26,31 @@ class PedidoController extends Controller
 
     public function agregarPedido(Request $request)
     {
-
+        $request->validate([
+            'fecha_compra' => 'required|date',
+            'identificacion_cliente' => 'required|integer|exists:clientes,identificacion',
+            // 'id_estado' y 'id_metodopago' los puedes omitir si aún no los defines
+        ]);
 
         try {
-            DB::statement('CALL agregar_pedidos(?, ?, ?, ?, ?)', [
-                $request->codigo,
-                $request->fecha_compra,
-                $request->id_estado,
-                $request->identificacion_cliente,
-                $request->id_metodopago
+            // Llamamos al procedure que devuelve el código
+            $result = DB::select('CALL public.agregar_pedidos_auto(?, ?, ?, ?)', [
+                $request->input('fecha_compra'),
+                $request->input('id_estado', 1),              // provisionales
+                $request->input('identificacion_cliente'),
+                $request->input('id_metodopago', 1)
             ]);
+            // $result[0]->p_codigo contendrá el nuevo código
+            $nuevoCodigo = $result[0]->p_codigo ?? null;
 
-            return response()->json(['mensaje' => 'Pedido agregado correctamente.'], 200);
-        } catch (Exception $e) {
             return response()->json([
-                'error' => 'No se pudo agregar el pedido.',
+                'mensaje' => 'Pedido creado correctamente.',
+                'codigoPedido' => $nuevoCodigo
+            ], 201);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudo crear el pedido.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
@@ -99,34 +109,64 @@ class PedidoController extends Controller
     }
 
     public function pedidosPorCliente($cedula)
-{
-    try {
-        $pedidos = DB::select('SELECT * FROM mostrar_pedidos_del_cliente(?)', [$cedula]);
+    {
+        try {
+            $pedidos = DB::select('SELECT * FROM mostrar_pedidos_del_cliente(?)', [$cedula]);
 
-        return response()->json($pedidos);
-    } catch (Exception $e) {
-        return response()->json([
-            'error' => 'No se pudieron obtener los pedidos del cliente.',
-            'detalle' => $e->getMessage()
-        ], 500);
+            return response()->json($pedidos);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron obtener los pedidos del cliente.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
     }
-}
 
-public function pendientes() {
-    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_pendientes()'));
-}
+    public function pendientes()
+    {
+        return response()->json(DB::select('SELECT * FROM mostrar_pedidos_pendientes()'));
+    }
 
-public function enProceso() {
-    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_en_proceso()'));
-}
+    public function enProceso()
+    {
+        return response()->json(DB::select('SELECT * FROM mostrar_pedidos_en_proceso()'));
+    }
 
-public function enviados() {
-    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_enviados()'));
-}
+    public function enviados()
+    {
+        return response()->json(DB::select('SELECT * FROM mostrar_pedidos_enviados()'));
+    }
 
-public function entregados() {
-    return response()->json(DB::select('SELECT * FROM mostrar_pedidos_entregados()'));
-}
+    public function entregados()
+    {
+        return response()->json(DB::select('SELECT * FROM mostrar_pedidos_entregados()'));
+    }
+
+    public function procesarDesdeCarrito(Request $request)
+    {
+        $request->validate([
+            'identificacion_cliente' => 'required|integer|exists:clientes,identificacion',
+            'id_metodopago' => 'required|integer',
+        ]);
+
+        try {
+            // Llamamos al procedimiento que envuelve todo el flujo
+            DB::statement('CALL public.procesar_pedido_desde_carrito(?, ?)', [
+                $request->identificacion_cliente,
+                $request->id_metodopago,
+            ]);
+
+            return response()->json([
+                'mensaje' => 'Pedido procesado y factura generada correctamente.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudo procesar el pedido.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 
 }
