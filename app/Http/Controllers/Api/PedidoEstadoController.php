@@ -49,16 +49,21 @@ class PedidoEstadoController extends Controller
     {
         $request->validate([
             'codigo_pedido' => 'required|integer',
-            'nuevo_estado' => 'required|string|in:En proceso,Enviado,Entregado',
+            'nuevo_estado' => 'required|integer|in:2,3,4',  // ahora espera IDs 2,3,4
         ]);
 
         try {
-            DB::statement('CALL actualizar_estado_pedido_personal_envios(?, ?)', [
-                $request->codigo_pedido,
-                $request->nuevo_estado
-            ]);
+            DB::statement(
+                'CALL actualizar_estado_pedido_personal_envios(?, ?)',
+                [
+                    $request->codigo_pedido,
+                    $request->nuevo_estado
+                ]
+            );
 
-            return response()->json(['mensaje' => 'Estado de pedido actualizado correctamente (envíos).'], 200);
+            return response()->json([
+                'mensaje' => 'Estado de pedido actualizado correctamente (envíos).'
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'No se pudo actualizar el estado del pedido.',
@@ -67,11 +72,13 @@ class PedidoEstadoController extends Controller
         }
     }
 
+
+
     public function simularCambioDeEstado()
-{
-    try {
-        // Obtener pedidos que aún no están en "Entregado" o "Cancelado"
-        $pedidos = DB::select("
+    {
+        try {
+            // Obtener pedidos que aún no están en "Entregado" o "Cancelado"
+            $pedidos = DB::select("
             SELECT codigo, id_estado
             FROM pedidos
            WHERE id_estado IN (
@@ -80,25 +87,25 @@ class PedidoEstadoController extends Controller
 
         ");
 
-        foreach ($pedidos as $pedido) {
-           $nuevoEstado = match ($pedido->id_estado) {
-    7 => 8, // Pendiente → En proceso
-    8 => 9, // En proceso → Enviado
-    9 => 10, // Enviado → Entregado
-    default => $pedido->id_estado,
-};
+            foreach ($pedidos as $pedido) {
+                $nuevoEstado = match ($pedido->id_estado) {
+                    1 => 2, // Pendiente → En proceso
+                    2 => 3, // En proceso → Enviado
+                    3 => 4, // Enviado → Entregado
+                    default => $pedido->id_estado,
+                };
 
 
-            DB::update("UPDATE pedidos SET id_estado = ? WHERE codigo = ?", [$nuevoEstado, $pedido->codigo]);
+                DB::update("UPDATE pedidos SET id_estado = ? WHERE codigo = ?", [$nuevoEstado, $pedido->codigo]);
+            }
+
+            return response()->json(['mensaje' => 'Estados actualizados automáticamente.'], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron actualizar los estados.',
+                'detalle' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['mensaje' => 'Estados actualizados automáticamente.'], 200);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => 'No se pudieron actualizar los estados.',
-            'detalle' => $e->getMessage()
-        ], 500);
     }
-}
 
 }
