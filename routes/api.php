@@ -68,10 +68,10 @@ Route::controller(PedidoController::class)->group(function () {
     Route::get('/pedidos/enviados', 'enviados');
     Route::get('/pedidos/entregados', 'entregados');
     Route::get('/pedidos/cliente/{cedula}', 'pedidosPorCliente');
-    
+
     // ESTA VA AL FINAL
     Route::get('/pedidos/{codigo}', 'buscarPedido');
-    
+
     Route::post('/pedidos', 'agregarPedido');
     Route::put('/pedidos/{codigo}', 'actualizarPedido');
     Route::delete('/pedidos/{codigo}', 'eliminarPedido');
@@ -94,9 +94,12 @@ Route::controller(PedidoEstadoController::class)->group(function () {
 Route::controller(FacturaController::class)->group(function () {
     Route::get('/facturas', 'todas');
     Route::get('/facturas/cliente/{id}', 'porCliente');
-    Route::post('/facturas/procesar', [FacturaController::class, 'procesarFactura']);
-
+    Route::get('/facturas/{id}', 'detalle');
+    Route::post('/facturas/procesar', 'procesarFactura');
+    Route::put('/facturas/{id}', 'actualizar');
+    Route::delete('/facturas/{id}', 'eliminar');
 });
+
 
 // Consultas de clientes
 Route::controller(ClienteConsultaController::class)->group(function () {
@@ -112,6 +115,13 @@ Route::controller(ProductoFiltroController::class)->group(function () {
     Route::get('/productos/moda', 'moda');
 });
 
-Route::get('/resenas/{id}', [ResenaController::class, 'buscarResena']);
+Route::get('/buscarResena/{id}', [ResenaController::class, 'buscarResena']);
 
 Route::get('/tipospago', [MetodoPagoController::class, 'listarTipos']);
+
+Route::controller(ResenaController::class)->group(function () {
+    Route::get('/resenas', 'ListarResenas');
+    Route::get('/resenas/{id}', 'verdetalleResena');
+    Route::post('/resenas', 'agregarResena');
+    Route::delete('/resenas/{id}', 'eliminarResena');
+});
