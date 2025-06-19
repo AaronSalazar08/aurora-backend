@@ -73,6 +73,8 @@ Route::controller(PedidoController::class)->group(function () {
     Route::get('/pedidos/{codigo}', 'buscarPedido');
     
     Route::post('/pedidos', 'agregarPedido');
+    Route::put('/pedidos/simular-cambio', [PedidoEstadoController::class, 'simularCambioDeEstado']);
+
     Route::put('/pedidos/{codigo}', 'actualizarPedido');
     Route::delete('/pedidos/{codigo}', 'eliminarPedido');
 });
