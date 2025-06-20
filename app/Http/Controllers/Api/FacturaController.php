@@ -9,10 +9,10 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\FacturaProcesadaMail;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Auth;
 class FacturaController extends Controller
 {
-    public function todas()
+    public function listarFacturas()
     {
         try {
             $facturas = DB::select('SELECT * FROM mostrar_todas_las_facturas()');
@@ -20,6 +20,42 @@ class FacturaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'No se pudieron obtener las facturas.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function misFacturas()
+    {
+        try {
+            // Obtener el cliente autenticado de forma segura
+            $user = Auth::user();
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+
+            if (!$cliente) {
+                return response()->json(['error' => 'Perfil de cliente no encontrado.'], 404);
+            }
+
+            // Consultar facturas y unir con clientes para obtener el nombre
+            $facturas = DB::table('facturas as f')
+                ->join('clientes as c', 'f.identificacion_cliente', '=', 'c.identificacion')
+                ->where('f.identificacion_cliente', $cliente->identificacion)
+                ->select(
+                    'f.id',
+                    'f.codigo_pedido',
+                    'f.fecha as fecha_factura',
+                    'f.monto_final',
+                    'c.nombre',
+                    'c.primer_apellido'
+                )
+                ->orderBy('f.id', 'desc')
+                ->get();
+
+            return response()->json($facturas, 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar las facturas del cliente.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
@@ -176,37 +212,41 @@ class FacturaController extends Controller
         }
     }
 
-    public function verDetalle($id) // CAMBIO: el parámetro ahora es el ID de la factura
+
+    public function verDetalle($id)
     {
         if (!ctype_digit((string) $id)) {
             return response()->json(['error' => 'Número de factura inválido.'], 400);
         }
 
         try {
-            // CAMBIO: Primero obtenemos el código del pedido usando el ID de la factura
+            // Primero, obtenemos la factura para encontrar su codigo_pedido
             $factura = DB::table('facturas')->where('id', $id)->first();
 
             if (!$factura) {
                 return response()->json(['error' => 'La factura no existe.'], 404);
             }
 
-            // Usamos el codigo_pedido para llamar a la función que ya tenías
+            // Ahora, usamos el codigo_pedido para llamar a la función que devuelve el JSON completo
             $codigoPedido = $factura->codigo_pedido;
-            $result = DB::selectOne('SELECT public.get_factura_detalle(?::int) AS detalle', [$codigoPedido]);
+            $resultado = DB::selectOne('SELECT public.get_factura_detalle(?::int) AS detalle', [$codigoPedido]);
 
-            if (!$result || $result->detalle === null) {
-                return response()->json(['error' => 'No se encontró el detalle para la factura especificada.'], 404);
+            if (!$resultado || $resultado->detalle === null) {
+                return response()->json(['error' => 'No se pudo obtener el detalle completo para la factura.'], 404);
             }
 
-            $detalleJson = json_decode($result->detalle, true);
+            // Decodificamos el string JSON de la base de datos y lo enviamos como un objeto JSON real
+            $detalleJson = json_decode($resultado->detalle, true);
+
             return response()->json($detalleJson, 200);
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error inesperado al obtener el detalle.',
+                'error' => 'Error inesperado al obtener el detalle de la factura.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
     }
+
 }
 

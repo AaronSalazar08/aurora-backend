@@ -31,59 +31,50 @@ class PedidoController extends Controller
     public function agregarPedidoAuto(Request $request)
     {
         try {
-            // Validación de entrada
-            $data = $request->validate([
-                'fecha_compra' => 'required|date_format:Y-m-d', // Ensure date format
-                'identificacion_cliente' => 'required|integer', // Ensure it's required and an integer
-                'id_estado' => 'sometimes|integer',
-                'id_metodopago' => 'sometimes|integer',
-            ]);
 
-            // Define default values if not provided in the request
-            $idEstado = $data['id_estado'] ?? 1;
-            $idMetodoPago = $data['id_metodopago'] ?? 1;
+            $user = Auth::user();
 
-            // Llamada al procedimiento con los 5 placeholders, incluyendo el de salida
-            $rows = DB::select(
-                'CALL public.agregar_pedidos_auto(?, ?, ?, ?, ?)',
-                [
-                    $data['fecha_compra'],
-                    $idEstado,
-                    $data['identificacion_cliente'], // This is where the error occurs if validation fails
-                    $idMetodoPago,
-                    null
-                ]
-            );
 
-            // El OUT p_codigo viene como propiedad 'p_codigo' en la primera fila
-            $codigoPedido = $rows[0]->p_codigo ?? null;
-
-            if ($codigoPedido) {
-                return response()->json([
-                    'message' => 'Pedido creado exitosamente.',
-                    'codigoPedido' => $codigoPedido
-                ], 201);
-            } else {
-                return response()->json([
-                    'error' => 'Pedido creado, pero no se pudo obtener el código.',
-                    'detalle' => 'La base de datos no devolvió el código del pedido.'
-                ], 500);
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+            if (!$cliente) {
+                return response()->json(['error' => 'No se encontró un perfil de cliente para este usuario.'], 404);
             }
 
-        } catch (ValidationException $e) {
-            // *** THIS IS THE CRUCIAL PART ***
-            // Catch validation errors specifically and return them
+            $codigoPedido = null;
+
+
+            DB::statement('CALL crear_pedido_inicial(?, ?)', [
+                $cliente->identificacion,
+                &
+                $codigoPedido
+            ]);
+            DB::beginTransaction();
+            try {
+
+                DB::statement("CALL crear_pedido_inicial(?, ?)", [$cliente->identificacion, 0]);
+
+
+                $codigoPedido = DB::selectOne("SELECT currval('pedidos_codigo_seq') AS codigo_pedido")->codigo_pedido;
+
+                DB::commit(); // Commit the transaction if everything is successful
+            } catch (Exception $e) {
+                DB::rollBack(); // Rollback on error
+                throw $e; // Re-throw to be caught by the outer catch block
+            }
+
+            // 4. Devuelve el nuevo código de pedido que generó la base de datos.
             return response()->json([
-                'error' => 'Error de validación de entrada.',
-                'detalle' => $e->errors(), // This will show you exactly why validation failed
-                'request_received' => $request->all() // Good for debugging what Laravel actually received
-            ], 422); // 422 Unprocessable Entity is the standard status code for validation errors
-        } catch (\Throwable $e) {
-            // Catch any other general exceptions (e.g., database connection issues, procedure errors)
+                'mensaje' => 'Pedido inicial creado exitosamente.',
+                'codigoPedido' => $codigoPedido
+            ], 201);
+
+        } catch (Exception $e) {
+            // Log the error for debugging purposes
+            \Log::error("Error al crear el pedido inicial: " . $e->getMessage(), ['exception' => $e]);
+
             return response()->json([
-                'error' => 'No se pudo crear el pedido por un error interno.',
-                'detalle' => $e->getMessage(),
-                // 'trace' => $e->getTraceAsString(), // Uncomment for detailed debugging
+                'error' => 'Error al crear el pedido inicial.',
+                'detalle' => $e->getMessage()
             ], 500);
         }
     }
@@ -212,32 +203,23 @@ class PedidoController extends Controller
     public function misPedidos(Request $request)
     {
         try {
-            // 1. Obtener el usuario autenticado a través del token (Sanctum)
+            // 1. Obtiene la identidad del usuario a partir del token. ¡Esto es seguro!
             $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['error' => 'No autenticado.'], 401);
-            }
-
-            // 2. Encontrar el perfil de cliente asociado usando el Query Builder
-            // CAMBIO: Reemplazamos el modelo `Cliente::where(...)` por `DB::table(...)`
             $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
 
             if (!$cliente) {
                 return response()->json(['error' => 'No se encontró un perfil de cliente para este usuario.'], 404);
             }
 
-            // 3. Usar la identificación del cliente para llamar a la función de la base de datos
-            $identificacionCliente = $cliente->identificacion;
-            $pedidos = DB::select('SELECT * FROM obtener_pedidos_completos_cliente(?)', [$identificacionCliente]);
+            // 2. Llama a la función de la BD con la identificación segura.
+            $pedidos = DB::select('SELECT * FROM obtener_pedidos_completos_cliente(?)', [$cliente->identificacion]);
 
-            // 4. Devolver los pedidos como una respuesta JSON exitosa
+            // 3. Devuelve los pedidos.
             return response()->json($pedidos, 200);
 
         } catch (Exception $e) {
-            // 5. Manejar cualquier error inesperado
             return response()->json([
-                'error' => 'Ocurrió un error al procesar la solicitud.',
+                'error' => 'No se pudieron cargar los pedidos.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
@@ -280,7 +262,7 @@ class PedidoController extends Controller
                 'mensaje' => 'Pedido procesado y factura generada correctamente.'
             ], 200);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'No se pudo procesar el pedido.',
                 'detalle' => $e->getMessage()
@@ -288,5 +270,66 @@ class PedidoController extends Controller
         }
     }
 
+    public function pedidosParaResena()
+    {
+        try {
+            // 1. Identificar al usuario de forma segura con el token
+            $user = Auth::user();
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+
+            if (!$cliente) {
+                return response()->json(['error' => 'Perfil de cliente no encontrado.'], 404);
+            }
+
+            // 2. Llamar a la función de la BD que creamos, pasándole la identificación segura
+            $pedidos = DB::select('SELECT * FROM public.obtener_pedidos_para_resena(?)', [$cliente->identificacion]);
+
+            // 3. Devolver la lista de pedidos
+            return response()->json($pedidos, 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'No se pudieron cargar los pedidos para reseñar.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function limpiarCarrito(Request $request, $codigoPedido)
+    {
+        try {
+            // Optional: Basic authorization check. Ensure the user owns this pedido.
+            // This requires fetching the pedido and checking its identificacion_cliente against Auth::user()
+            $user = Auth::user();
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+
+            if (!$cliente) {
+                return response()->json(['error' => 'No se encontró un perfil de cliente para este usuario.'], 404);
+            }
+
+            $pedido = DB::table('pedidos')
+                ->where('codigo', $codigoPedido)
+                ->where('identificacion_cliente', $cliente->identificacion)
+                ->first();
+
+            if (!$pedido) {
+                return response()->json(['error' => 'Pedido no encontrado o no pertenece a este usuario.'], 404);
+            }
+
+            // Call the PostgreSQL procedure to clear the cart items
+            DB::statement('CALL limpiar_carrito_por_pedido(?)', [$codigoPedido]);
+
+            return response()->json([
+                'mensaje' => 'Carrito limpiado exitosamente para el pedido ' . $codigoPedido
+            ], 200);
+
+        } catch (Exception $e) {
+            \Log::error("Error al limpiar el carrito para pedido {$codigoPedido}: " . $e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'error' => 'Error al limpiar el carrito.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

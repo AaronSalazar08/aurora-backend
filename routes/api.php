@@ -62,6 +62,8 @@ Route::get('productos/moda', [ProductoFiltroController::class, 'moda']);
 
 Route::get('usuarios/personal-envios', [UsuarioController::class, 'listarPersonalEnvios']);
 Route::get('resenas', [ResenaController::class, 'ListarResenas']);
+
+Route::post('usuarios', [UsuarioController::class, 'agregarUsuario']);
 /* 
 |--------------------------------------------------------------------------
 | Rutas privadas
@@ -70,11 +72,12 @@ Route::get('resenas', [ResenaController::class, 'ListarResenas']);
 Route::middleware('auth:sanctum')->group(function () {
 
 
-
+    Route::put('/productos/reducir-stock', [ProductoController::class, 'reducir_stock']);
+    Route::post('/carrito/limpiar/{codigoPedido}', [PedidoController::class, 'limpiarCarrito']);
 
 
     // Pedidos (lectura pública)
-
+    Route::get('estados-pedido', [PedidoEstadoController::class, 'listarEstadosAprobacion']);
     Route::get('pedidos/cliente/{cedula}', [PedidoController::class, 'pedidosPorCliente']);
     Route::get('pedidos/pendientes', [PedidoController::class, 'pendientes']);
     Route::get('pedidos/enproceso', [PedidoController::class, 'enProceso']);
@@ -110,11 +113,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Usuarios
     Route::get('usuarios', [UsuarioController::class, 'index']);
-    Route::post('usuarios', [UsuarioController::class, 'agregarUsuario']);
+
 
     // Personal de envíos
 
     Route::post('usuarios/personal-envios', [UsuarioController::class, 'agregarPersonalEnvios']);
+    Route::delete('usuarios/personal-envios/{id}', [UsuarioController::class, 'eliminarPersonalEnvios']);
 
     // CRUD Productos
     Route::post('productos', [ProductoController::class, 'agregarProducto']);
@@ -122,11 +126,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('productos/{codigo}', [ProductoController::class, 'eliminarProducto']);
     Route::get('productos/{codigo}', [ProductoController::class, 'buscarProducto']);
 
+
     // CRUD Pedidos
     Route::post('/pedidos/auto', [PedidoController::class, 'agregarPedidoAuto']);
     Route::put('pedidos/{codigo}', [PedidoController::class, 'actualizarPedido']);
     Route::delete('pedidos/{codigo}', [PedidoController::class, 'eliminarPedido']);
-    Route::get('/mis-pedidos', [PedidoController::class, 'misPedidos'])->middleware('auth:sanctum');
+    Route::get('/mis-pedidos', [PedidoController::class, 'misPedidos']);
 
     // Clientes (update/delete)
     Route::put('clientes/{identificacion}', [ClienteController::class, 'actualizarCliente']);
@@ -138,7 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('pedidos/admin/estado', [PedidoEstadoController::class, 'actualizarEstadoAdmin']);
     Route::put('pedidos/envios/estado', [PedidoEstadoController::class, 'actualizarEstadoEnvios']);
 
-    // Facturas (write)
+    Route::get('mis-facturas', [FacturaController::class, 'misFacturas']);
+    Route::get('facturas', [FacturaController::class, 'listarFacturas']);
     Route::post('facturas/procesar/{codigo}', [FacturaController::class, 'procesarFactura']);
     Route::put('facturas/{id}', [FacturaController::class, 'actualizar']);
     Route::delete('facturas/{id}', [FacturaController::class, 'eliminar']);
@@ -149,6 +155,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('resenas/{id}', [ResenaController::class, 'verdetalleResena']);
     Route::post('resenas', [ResenaController::class, 'agregarResena']);
     Route::delete('resenas/{id}', [ResenaController::class, 'eliminarResena']);
+    Route::get('pedidos-para-resena', [PedidoController::class, 'pedidosParaResena']);
 
     // Carrito
     Route::prefix('carrito')->group(function () {

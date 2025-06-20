@@ -49,7 +49,7 @@ class PedidoEstadoController extends Controller
     {
         $request->validate([
             'codigo_pedido' => 'required|integer',
-            'nuevo_estado' => 'required|integer|in:2,3,4',  // ahora espera IDs 2,3,4
+            'nuevo_estado' => 'required|integer|in:2,3,4',
         ]);
 
         try {

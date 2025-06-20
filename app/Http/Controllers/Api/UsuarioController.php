@@ -65,6 +65,41 @@ class UsuarioController extends Controller
         }
     }
 
+    public function eliminarPersonalEnvios($id)
+    {
+        // 1. Validar que el ID sea un número entero válido.
+        if (!ctype_digit((string) $id) || $id < 1) {
+            return response()->json(['error' => 'El ID de usuario proporcionado no es válido.'], 400);
+        }
+
+        try {
+            // 2. Llamar al procedimiento almacenado para eliminar el usuario.
+            DB::statement('CALL public.eliminar_personal_envios(?)', [$id]);
+
+            // 3. Si no hay excepciones, la eliminación fue exitosa.
+            return response()->json(['mensaje' => 'Usuario de personal de envíos eliminado correctamente.'], 200);
+
+        } catch (\Exception $e) {
+            // 4. Manejar los errores específicos que definimos en el procedimiento.
+            $mensajeError = $e->getMessage();
+
+            if (str_contains($mensajeError, 'No se encontró un usuario')) {
+                return response()->json(['error' => 'El usuario que intenta eliminar no existe.'], 404);
+            }
+
+            if (str_contains($mensajeError, 'no es Personal de Envíos')) {
+                return response()->json(['error' => 'Acción no permitida: Este usuario no es personal de envíos.'], 403);
+            }
+
+            // 5. Devolver un error genérico para cualquier otro problema.
+            return response()->json([
+                'error' => 'Error inesperado al eliminar el usuario.',
+                'detalle' => $mensajeError
+            ], 500);
+        }
+    }
+
+
 
 
 

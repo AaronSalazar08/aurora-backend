@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 class ProductoController extends Controller
 {
 
@@ -171,6 +172,73 @@ class ProductoController extends Controller
         }
     }
 
+    public function reducir_stock(Request $request)
+    {
+        // Middleware 'auth:sanctum' o similar ya garantiza que $request->user() es válido.
+        $user = $request->user();
 
+        // Validar estructura del payload
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.codigo_producto' => 'required|integer|exists:productos,codigo',
+            'items.*.cantidad' => 'required|integer|min:1',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->input('items') as $item) {
+                $codigoProducto = $item['codigo_producto'];
+                $cantidad = $item['cantidad'];
+
+                // 1) Bloquear la fila para evitar race conditions (opcional pero recomendado)
+                $currentStock = DB::table('productos')
+                    ->where('codigo', $codigoProducto)
+                    ->lockForUpdate()
+                    ->value('cantidad_stock');
+
+                if (is_null($currentStock)) {
+                    // No existe el producto (aunque validación 'exists' debería impedirlo)
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "Producto con código {$codigoProducto} no encontrado."
+                    ], 404);
+                }
+                if ($currentStock < $cantidad) {
+                    // Stock insuficiente
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => "Stock insuficiente para el producto con código {$codigoProducto}. Disponible: {$currentStock}, solicitado: {$cantidad}."
+                    ], 400);
+                }
+
+                // 2) Llamar a la función de PostgreSQL reducir_stock(p_codigo_producto, p_cantidad)
+                //    Dependiendo de tu esquema, puede que necesites prefijar el schema (public).
+                //    Usamos SELECT public.reducir_stock(?, ?) o simplemente reducir_stock si el search_path lo incluye.
+                DB::statement('SELECT public.reducir_stock(?, ?)', [
+                    $codigoProducto,
+                    $cantidad
+                ]);
+                // Alternativamente: DB::select('SELECT public.reducir_stock(?, ?)', [...]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Stock actualizado exitosamente.'], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Loguear con información adicional si deseas
+            Log::error('Error al reducir stock en reducir_stock(): ' . $e->getMessage(), [
+                'user_id' => $user->id ?? null,
+                'items' => $request->input('items'),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Error interno al actualizar stock.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+
+
+    }
 
 }
