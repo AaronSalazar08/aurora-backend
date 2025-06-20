@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class ClienteController extends Controller
 {
-   
+
     public function actualizarCliente(Request $request, $identificacion)
     {
         $request->validate([
@@ -45,6 +45,36 @@ class ClienteController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'No se pudo eliminar el cliente.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function porUsuario($idUsuario)
+    {
+        try {
+            $rows = DB::select(
+                <<<'SQL'
+                SELECT 
+                  c.identificacion,
+                  c.nombre,
+                  c.primer_apellido,
+                  c.segundo_apellido,
+                  c.id_direccion,
+                  c.id_contacto,
+                  c.cliente_con_descuento_proxima_facturacion
+                FROM clientes AS c
+                WHERE c.id_usuario = ?
+                SQL,
+                [$idUsuario]
+            );
+            if (empty($rows)) {
+                return response()->json(['mensaje' => 'Cliente no encontrado'], 404);
+            }
+            return response()->json($rows[0], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error recuperando datos de cliente.',
                 'detalle' => $e->getMessage()
             ], 500);
         }

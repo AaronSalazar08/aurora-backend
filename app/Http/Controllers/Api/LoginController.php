@@ -32,30 +32,32 @@ class LoginController extends Controller
         }
 
         try {
-            // 2) Llamar a la función SQL
             $rows = DB::select('SELECT * FROM login(?, ?)', [
                 $request->input('nombre'),
                 $request->input('clave'),
             ]);
 
-            // 3) Verificar credenciales
             if (empty($rows)) {
-                return response()->json(
-                    ['mensaje' => 'Credenciales incorrectas'],
-                    401
-                );
+                return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
             }
 
-            // 4) Devolver el primer registro (id, nombre, id_tipo)
             $user = $rows[0];
+
+            // 👉 Nueva consulta para obtener la identificacion del cliente
+            $clienteRow = DB::selectOne(
+                'SELECT identificacion FROM clientes WHERE id_usuario = ?',
+                [$user->id]
+            );
+            $identificacion = $clienteRow->identificacion ?? null;
+
             return response()->json([
                 'id' => $user->id,
                 'nombre' => $user->nombre,
                 'id_tipo' => $user->id_tipo,
+                'identificacion' => $identificacion,
             ], 200);
 
         } catch (\Exception $e) {
-            // 5) Error interno
             return response()->json([
                 'error' => 'Error interno: ' . $e->getMessage()
             ], 500);

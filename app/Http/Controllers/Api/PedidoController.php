@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Exception;
 
 class PedidoController extends Controller
@@ -24,38 +25,65 @@ class PedidoController extends Controller
         }
     }
 
-    public function agregarPedido(Request $request)
+    public function agregarPedidoAuto(Request $request)
     {
-        $request->validate([
-            'fecha_compra' => 'required|date',
-            'identificacion_cliente' => 'required|integer|exists:clientes,identificacion',
-            // 'id_estado' y 'id_metodopago' los puedes omitir si aún no los defines
-        ]);
-
         try {
-            // Llamamos al procedure que devuelve el código
-            $result = DB::select('CALL public.agregar_pedidos_auto(?, ?, ?, ?)', [
-                $request->input('fecha_compra'),
-                $request->input('id_estado', 1),              // provisionales
-                $request->input('identificacion_cliente'),
-                $request->input('id_metodopago', 1)
+            // Validación de entrada
+            $data = $request->validate([
+                'fecha_compra' => 'required|date_format:Y-m-d', // Ensure date format
+                'identificacion_cliente' => 'required|integer', // Ensure it's required and an integer
+                'id_estado' => 'sometimes|integer',
+                'id_metodopago' => 'sometimes|integer',
             ]);
-            // $result[0]->p_codigo contendrá el nuevo código
-            $nuevoCodigo = $result[0]->p_codigo ?? null;
 
-            return response()->json([
-                'mensaje' => 'Pedido creado correctamente.',
-                'codigoPedido' => $nuevoCodigo
-            ], 201);
+            // Define default values if not provided in the request
+            $idEstado = $data['id_estado'] ?? 1;
+            $idMetodoPago = $data['id_metodopago'] ?? 1;
 
-        } catch (\Exception $e) {
+            // Llamada al procedimiento con los 5 placeholders, incluyendo el de salida
+            $rows = DB::select(
+                'CALL public.agregar_pedidos_auto(?, ?, ?, ?, ?)',
+                [
+                    $data['fecha_compra'],
+                    $idEstado,
+                    $data['identificacion_cliente'], // This is where the error occurs if validation fails
+                    $idMetodoPago,
+                    null
+                ]
+            );
+
+            // El OUT p_codigo viene como propiedad 'p_codigo' en la primera fila
+            $codigoPedido = $rows[0]->p_codigo ?? null;
+
+            if ($codigoPedido) {
+                return response()->json([
+                    'message' => 'Pedido creado exitosamente.',
+                    'codigoPedido' => $codigoPedido
+                ], 201);
+            } else {
+                return response()->json([
+                    'error' => 'Pedido creado, pero no se pudo obtener el código.',
+                    'detalle' => 'La base de datos no devolvió el código del pedido.'
+                ], 500);
+            }
+
+        } catch (ValidationException $e) {
+            // *** THIS IS THE CRUCIAL PART ***
+            // Catch validation errors specifically and return them
             return response()->json([
-                'error' => 'No se pudo crear el pedido.',
-                'detalle' => $e->getMessage()
+                'error' => 'Error de validación de entrada.',
+                'detalle' => $e->errors(), // This will show you exactly why validation failed
+                'request_received' => $request->all() // Good for debugging what Laravel actually received
+            ], 422); // 422 Unprocessable Entity is the standard status code for validation errors
+        } catch (\Throwable $e) {
+            // Catch any other general exceptions (e.g., database connection issues, procedure errors)
+            return response()->json([
+                'error' => 'No se pudo crear el pedido por un error interno.',
+                'detalle' => $e->getMessage(),
+                // 'trace' => $e->getTraceAsString(), // Uncomment for detailed debugging
             ], 500);
         }
     }
-
     public function actualizarPedido(Request $request, $codigo)
     {
         try {

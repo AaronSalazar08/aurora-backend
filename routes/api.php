@@ -108,13 +108,15 @@ Route::delete('productos/{codigo}', [ProductoController::class, 'eliminarProduct
 Route::get('productos/{codigo}', [ProductoController::class, 'buscarProducto']);
 
 // CRUD Pedidos
-Route::post('pedidos', [PedidoController::class, 'agregarPedido']);
+Route::post('/pedidos/auto', [PedidoController::class, 'agregarPedidoAuto']);
 Route::put('pedidos/{codigo}', [PedidoController::class, 'actualizarPedido']);
 Route::delete('pedidos/{codigo}', [PedidoController::class, 'eliminarPedido']);
 
 // Clientes (update/delete)
 Route::put('clientes/{identificacion}', [ClienteController::class, 'actualizarCliente']);
 Route::delete('clientes/{identificacion}', [ClienteController::class, 'eliminarCliente']);
+Route::get('clientes/usuario/{idUsuario}', [ClienteController::class, 'porUsuario']);
+
 
 // Estados de pedido
 Route::put('pedidos/admin/estado', [PedidoEstadoController::class, 'actualizarEstadoAdmin']);
