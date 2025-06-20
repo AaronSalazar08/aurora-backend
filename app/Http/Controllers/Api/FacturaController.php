@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\FacturaProcesadaMail;
+use Illuminate\Support\Facades\Log;
 
 class FacturaController extends Controller
 {
@@ -53,77 +54,74 @@ class FacturaController extends Controller
         }
     }
 
-   public function procesarFactura(Request $request)
+    public function procesarFactura(Request $request, $codigo)
     {
-        $request->validate([
-            'codigo_pedido' => 'required|integer'
-        ]);
+        // ... (la validación del código del pedido sigue igual)
+        if (!ctype_digit((string) $codigo)) {
+            return response()->json(['error' => 'Código de pedido inválido.'], 400);
+        }
+        $codigoPedido = (int) $codigo;
 
         try {
-            // Ejecutar el procedimiento almacenado que crea la factura
-        DB::statement('CALL procesar_factura(?)', [$request->codigo_pedido]);
+            // ... (la verificación del pedido y la llamada al procedure siguen igual)
+            DB::statement('CALL public.procesar_factura(?::int)', [$codigoPedido]);
 
-            // Obtener la última factura creada, forzando los campos de dinero como numeric
-        $factura = DB::selectOne('
-            SELECT 
-                id, 
-                codigo_pedido,
-                id_productoscomprados,
-                identificacion_cliente,
-                CAST(monto AS numeric) AS monto,
-                CAST(impuesto AS numeric) AS impuesto,
-                CAST(descuento AS numeric) AS descuento,
-                CAST(monto_final AS numeric) AS monto_final,
-                fecha
-            FROM facturas 
-            ORDER BY id DESC 
-            LIMIT 1
-        ');
+            $row = DB::selectOne('SELECT public.get_factura_detalle(?::int) AS detalle', [$codigoPedido]);
 
-        // Obtener productos del carrito (con cast para evitar problema del tipo money)
-        $productos = DB::select("
-            SELECT 
-                p.nombre, 
-                pec.cantidad, 
-                CAST(pec.precio AS numeric) AS precio
-            FROM productos_en_carrito pec
-            JOIN productos p ON p.codigo = pec.codigo_producto
-            WHERE pec.codigo_pedido = ?
-        ", [$request->codigo_pedido]);
+            if (!$row || $row->detalle === null) {
+                return response()->json(['error' => 'Factura creada, pero no se pudo obtener el detalle.'], 500);
+            }
 
-        // Obtener correo y nombre del cliente
-        $correo = DB::selectOne("
-            SELECT ce.nombre as email, c.nombre || ' ' || c.primer_apellido AS cliente_nombre
-            FROM clientes c
-            JOIN contacto co ON co.identificacion_cliente = c.identificacion
-            JOIN correo_electronico ce ON ce.id = co.id_correo_electronico
-            WHERE c.identificacion = ?
-        ", [$factura->identificacion_cliente]);
+            $detalle = json_decode($row->detalle, true);
+            $productos = $detalle['productos'] ?? [];
 
-        // Convertir los campos a float de forma segura
-        $factura->monto = (float) $factura->monto;
-        $factura->impuesto = (float) $factura->impuesto;
-        $factura->descuento = (float) $factura->descuento;
-        $factura->monto_final = (float) $factura->monto_final;
+            // --- INICIO DE LA MEJORA ---
+            // Encapsulamos el envío de correo para que no detenga el proceso principal si falla.
+            try {
+                if (isset($detalle['cliente']['identificacion'])) {
+                    $ident = $detalle['cliente']['identificacion'];
+                    $correoRow = DB::selectOne("
+                        SELECT ce.nombre as email 
+                        FROM clientes c
+                        JOIN contacto co ON co.identificacion_cliente = c.identificacion
+                        JOIN correo_electronico ce ON ce.id = co.id_correo_electronico
+                        WHERE c.identificacion = ?
+                    ", [$ident]);
 
-        foreach ($productos as $prod) {
-            $prod->precio = (float) $prod->precio;
-        }
+                    if ($correoRow && isset($correoRow->email)) {
+                        Mail::to($correoRow->email)->send(new FacturaProcesadaMail($detalle, $productos));
+                    }
+                }
+            } catch (\Exception $emailException) {
+                // Si el correo falla, lo registramos en los logs de Laravel en lugar de fallar.
+                Log::error("Fallo al enviar correo de factura para pedido {$codigoPedido}: " . $emailException->getMessage());
+            }
+            // --- FIN DE LA MEJORA ---
 
-        // Agregar nombre completo del cliente al objeto factura
-        $factura->cliente_nombre = $correo->cliente_nombre;
-
-        // Enviar el correo
-        Mail::to($correo->email)->send(new FacturaProcesadaMail($factura, $productos));
-
-        return response()->json(['mensaje' => 'Factura procesada y enviada por correo exitosamente.'], 200);
-        } catch (\Exception $e) {
+            // Retornar el detalle de la factura al frontend (esto se ejecutará incluso si el email falla)
             return response()->json([
-                'error' => 'No se pudo procesar la factura.',
+                'mensaje' => 'Factura procesada exitosamente.',
+                'factura' => $detalle
+            ], 200);
+
+        } catch (QueryException $e) {
+            // ... (El manejo de errores de la base de datos sigue igual)
+            // ...
+            return response()->json([
+                'error' => 'Error de base de datos al procesar la factura.',
+                'detalle' => $e->getMessage()
+            ], 500);
+
+        } catch (\Exception $e) {
+            // Este bloque ahora solo capturará otros errores inesperados.
+            Log::error("Error inesperado en procesarFactura para pedido {$codigoPedido}: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Error inesperado al procesar la factura.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
     }
+
 
 
     public function actualizar(Request $request, $id)
@@ -173,6 +171,39 @@ class FacturaController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'No se pudo eliminar la factura.',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function verDetalle($id) // CAMBIO: el parámetro ahora es el ID de la factura
+    {
+        if (!ctype_digit((string) $id)) {
+            return response()->json(['error' => 'Número de factura inválido.'], 400);
+        }
+
+        try {
+            // CAMBIO: Primero obtenemos el código del pedido usando el ID de la factura
+            $factura = DB::table('facturas')->where('id', $id)->first();
+
+            if (!$factura) {
+                return response()->json(['error' => 'La factura no existe.'], 404);
+            }
+
+            // Usamos el codigo_pedido para llamar a la función que ya tenías
+            $codigoPedido = $factura->codigo_pedido;
+            $result = DB::selectOne('SELECT public.get_factura_detalle(?::int) AS detalle', [$codigoPedido]);
+
+            if (!$result || $result->detalle === null) {
+                return response()->json(['error' => 'No se encontró el detalle para la factura especificada.'], 404);
+            }
+
+            $detalleJson = json_decode($result->detalle, true);
+            return response()->json($detalleJson, 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error inesperado al obtener el detalle.',
                 'detalle' => $e->getMessage()
             ], 500);
         }

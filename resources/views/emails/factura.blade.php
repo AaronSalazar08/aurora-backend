@@ -1,23 +1,23 @@
-@component('mail::message')
-# Detalle de Factura
+{{-- Código CORREGIDO usando sintaxis de array --}}
+{{-- El nombre de las claves ('factura', 'id', 'cliente', 'nombre')
+depende de la estructura del JSON que genera tu función get_factura_detalle() --}}
 
-**Factura ID:** {{ $factura->id }}  
-**Cliente:** {{ $factura->cliente_nombre }}  
-**Fecha:** {{ $factura->fecha }}
+<h1>Factura #{{ $detalle['factura']['id'] }}</h1>
+<p>Hola {{ $detalle['cliente']['nombre'] }},</p>
 
-@component('mail::table')
-| Producto | Cantidad | Precio |
-|----------|----------|--------|
-@foreach ($productos as $prod)
-| {{ $prod->nombre }} | {{ $prod->cantidad }} | ₡{{ number_format((float) $prod->precio, 2) }} |
-@endforeach
-@endcomponent
+<p>Gracias por tu compra. Aquí está el resumen de tu pedido:</p>
+<ul>
+    @foreach ($productos as $producto)
+        <li>{{ $producto['cantidad'] }}x {{ $producto['nombre'] }} - ${{ number_format($producto['precio_total'], 2) }}</li>
+    @endforeach
+</ul>
 
-**Subtotal:** ₡{{ number_format((float) $factura->monto, 2) }}  
-**Impuesto:** ₡{{ number_format((float) $factura->impuesto, 2) }}  
-**Descuento:** ₡{{ number_format((float) $factura->descuento, 2) }}  
-**Total:** ₡{{ number_format((float) $factura->monto_final, 2) }}
+<p><strong>Subtotal:</strong> ${{ number_format($detalle['factura']['monto'], 2) }}</p>
+<p><strong>Impuesto (13%):</strong> ${{ number_format($detalle['factura']['impuesto'], 2) }}</p>
+@if (isset($detalle['factura']['descuento']) && $detalle['factura']['descuento'] > 0)
+    <p><strong>Descuento:</strong> -${{ number_format($detalle['factura']['descuento'], 2) }}</p>
+@endif
+<p><strong>Total Pagado:</strong> ${{ number_format($detalle['factura']['monto_final'], 2) }}</p>
 
-Gracias por su compra.<br>
-Aurora Boutique
-@endcomponent
+<p>Saludos,</p>
+<p>El equipo de Aurora Boutique</p>

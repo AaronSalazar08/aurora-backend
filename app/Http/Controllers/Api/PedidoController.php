@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
+
 use Exception;
 
 class PedidoController extends Controller
@@ -104,6 +107,76 @@ class PedidoController extends Controller
         }
     }
 
+    public function actualizarMetodoPago(Request $request, $codigo)
+    {
+        try {
+            // 1) Validar entrada: id_metodopago debe existir en metodos_pago(id)
+            $data = $request->validate([
+                'id_metodopago' => 'required|integer|exists:metodos_pago,id',
+            ], [
+                'id_metodopago.exists' => 'El método de pago especificado no existe.',
+            ]);
+
+            $idMetodoPago = $data['id_metodopago'];
+            $codigoPedido = (int) $codigo;
+
+            // 2) Verificar existencia del pedido antes de llamar al procedimiento
+            $pedidoExists = DB::table('pedidos')
+                ->where('codigo', $codigoPedido)
+                ->exists();
+            if (!$pedidoExists) {
+                return response()->json([
+                    'error' => 'Pedido no encontrado',
+                    'detalle' => "No existe un pedido con código = $codigoPedido."
+                ], 404);
+            }
+
+            // 3) Llamar al procedimiento. No devuelve filas, así que usamos statement.
+            DB::statement('CALL public.actualizar_metodo_pago(?::int, ?::int)', [
+                $codigoPedido,
+                $idMetodoPago
+            ]);
+
+            // 4) Si llegamos aquí sin excepción, es éxito
+            return response()->json([
+                'message' => 'Método de pago actualizado correctamente.'
+            ], 200);
+
+        } catch (ValidationException $e) {
+            // Error de validación de entrada
+            return response()->json([
+                'error' => 'Error de validación de entrada.',
+                'detalle' => $e->errors(),
+            ], 422);
+
+        } catch (QueryException $e) {
+            // Excepción de la base de datos (incluye RAISE EXCEPTION dentro del procedimiento)
+            $msg = $e->getMessage();
+
+            // Detectar mensaje de RAISE en el procedimiento: 'Método de pago con id = ... no existe'
+            if (strpos($msg, 'Método de pago con id =') !== false) {
+                // Limpiar prefijo ERROR: si se desea
+                $cleanMsg = preg_replace('/ERROR:\s*/i', '', $msg);
+                return response()->json([
+                    'error' => 'Método de pago inválido',
+                    'detalle' => $cleanMsg
+                ], 400);
+            }
+
+            // Otros errores de BD
+            return response()->json([
+                'error' => 'Error de base de datos al actualizar método de pago.',
+                'detalle' => $msg,
+            ], 500);
+
+        } catch (\Throwable $e) {
+            // Cualquier otro error inesperado
+            return response()->json([
+                'error' => 'Error inesperado al actualizar método de pago.',
+                'detalle' => $e->getMessage(),
+            ], 500);
+        }
+    }
     public function eliminarPedido($codigo)
     {
         try {
@@ -136,20 +209,39 @@ class PedidoController extends Controller
         }
     }
 
-    public function pedidosPorCliente($cedula)
+    public function misPedidos(Request $request)
     {
         try {
-            $pedidos = DB::select('SELECT * FROM mostrar_pedidos_del_cliente(?)', [$cedula]);
+            // 1. Obtener el usuario autenticado a través del token (Sanctum)
+            $user = Auth::user();
 
-            return response()->json($pedidos);
+            if (!$user) {
+                return response()->json(['error' => 'No autenticado.'], 401);
+            }
+
+            // 2. Encontrar el perfil de cliente asociado usando el Query Builder
+            // CAMBIO: Reemplazamos el modelo `Cliente::where(...)` por `DB::table(...)`
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+
+            if (!$cliente) {
+                return response()->json(['error' => 'No se encontró un perfil de cliente para este usuario.'], 404);
+            }
+
+            // 3. Usar la identificación del cliente para llamar a la función de la base de datos
+            $identificacionCliente = $cliente->identificacion;
+            $pedidos = DB::select('SELECT * FROM obtener_pedidos_completos_cliente(?)', [$identificacionCliente]);
+
+            // 4. Devolver los pedidos como una respuesta JSON exitosa
+            return response()->json($pedidos, 200);
+
         } catch (Exception $e) {
+            // 5. Manejar cualquier error inesperado
             return response()->json([
-                'error' => 'No se pudieron obtener los pedidos del cliente.',
+                'error' => 'Ocurrió un error al procesar la solicitud.',
                 'detalle' => $e->getMessage()
             ], 500);
         }
     }
-
     public function pendientes()
     {
         return response()->json(DB::select('SELECT * FROM mostrar_pedidos_pendientes()'));

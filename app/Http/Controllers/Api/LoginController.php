@@ -5,61 +5,71 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use App\Models\User; // <-- IMPORTANTE: Aún necesitamos el modelo User para generar el token
 
 class LoginController extends Controller
 {
     /**
-     * Maneja el login llamando únicamente a la función almacenada.
+     * Maneja la petición de inicio de sesión usando la función de la base de datos.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function login(Request $request)
     {
-        // 1) Validar entrada
-        $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:30',
-            'clave' => 'required|string|min:8',
-        ], [
-            'nombre.required' => 'El nombre es obligatorio.',
-            'clave.required' => 'La clave es obligatoria.',
-            'clave.min' => 'La clave debe tener al menos 8 caracteres.',
+        // 1. Validar la entrada
+        $request->validate([
+            'nombre' => 'required|string',
+            'clave' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(
-                $validator->errors(),
-                422
-            );
-        }
-
         try {
-            $rows = DB::select('SELECT * FROM login(?, ?)', [
-                $request->input('nombre'),
-                $request->input('clave'),
+            // 2. Llamar a la función de la base de datos en lugar de Auth::attempt
+            $userData = DB::select('SELECT * FROM login(?, ?)', [
+                $request->nombre,
+                $request->clave,
             ]);
 
-            if (empty($rows)) {
-                return response()->json(['mensaje' => 'Credenciales incorrectas'], 401);
+            // 3. Verificar si la función devolvió un usuario
+            if (empty($userData)) {
+                // Si la función devuelve un array vacío, las credenciales son incorrectas
+                return response()->json(['mensaje' => 'Las credenciales proporcionadas son incorrectas.'], 401);
             }
 
-            $user = $rows[0];
+            // La función devolvió un usuario, tomamos el primer resultado
+            $userFromDb = $userData[0];
 
-            // 👉 Nueva consulta para obtener la identificacion del cliente
-            $clienteRow = DB::selectOne(
-                'SELECT identificacion FROM clientes WHERE id_usuario = ?',
-                [$user->id]
-            );
-            $identificacion = $clienteRow->identificacion ?? null;
+            // 4. INDISPENSABLE: Obtener la instancia completa del modelo User
+            // Para poder usar ->createToken(), necesitamos el objeto Eloquent, no solo datos crudos.
+            $user = User::find($userFromDb->id);
+            if (!$user) {
+                // Esto no debería pasar si la función login funciona, pero es una buena verificación
+                return response()->json(['mensaje' => 'Usuario encontrado pero no se pudo cargar el modelo.'], 500);
+            }
 
+            // 5. Generar el token de acceso de Sanctum
+            $token = $user->createToken('auth_token_cliente')->plainTextToken;
+
+            // 6. Obtener los datos del cliente asociado
+            $cliente = DB::table('clientes')->where('id_usuario', $user->id)->first();
+
+            // 7. Devolver la respuesta completa
             return response()->json([
-                'id' => $user->id,
-                'nombre' => $user->nombre,
-                'id_tipo' => $user->id_tipo,
-                'identificacion' => $identificacion,
-            ], 200);
+                'mensaje' => 'Inicio de sesión exitoso',
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'user' => [
+                    'id' => $user->id,
+                    'nombre' => $user->nombre,
+                    'id_tipo' => $user->id_tipo,
+                ],
+                'cliente' => $cliente
+            ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error interno: ' . $e->getMessage()
+                'error' => 'Ocurrió un error en el servidor al intentar iniciar sesión.',
+                'detalle' => $e->getMessage()
             ], 500);
         }
     }
