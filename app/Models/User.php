@@ -4,51 +4,33 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; // Para que $user->createToken() funcione
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     use HasApiTokens, Notifiable;
 
-    /**
-     * INDISPENSABLE: El nombre exacto de tu tabla de usuarios en la base de datos.
-     * Laravel asume 'users', pero si se llama 'usuario' o 'usuarios', debes especificarlo.
-     */
-    protected $table = 'usuario'; // O 'usuarios', el nombre que tenga tu tabla
+    // El nombre real de tu tabla
+    protected $table = 'usuario';
 
-    /**
-     * INDISPENSABLE: Indica si el modelo debe usar las columnas 'created_at' y 'updated_at'.
-     * Si tu tabla no las tiene, esto debe ser 'false' para evitar errores.
-     */
+    // Si tu tabla no tiene created_at / updated_at
     public $timestamps = false;
 
-    /**
-     * INDISPENSABLE: El nombre de la clave primaria si no es 'id'.
-     */
-    protected $primaryKey = 'id'; // Ajusta si tu PK se llama diferente
+    // Si tu PK no es 'id', cámbialo aquí. Pero si es 'id', déjalo.
+    protected $primaryKey = 'id';
 
-    /**
-     * IMPORTANTE: Le dice al Auth::attempt() que tu columna de contraseña se llama 'clave',
-     * no 'password' (que es el valor por defecto de Laravel).
-     */
+    // Para que Auth::attempt sepa usar la columna 'clave'
     public function getAuthPassword()
     {
         return $this->clave;
     }
 
-    /**
-     * Los atributos que se pueden asignar masivamente (opcional, pero buena práctica).
-     */
     protected $fillable = [
         'nombre',
-        'clave', // Importante para el registro
+        'clave',
         'id_tipo',
     ];
 
-    /**
-     * Los atributos que deben ocultarse cuando el modelo se convierte a JSON.
-     * Siempre es buena práctica ocultar la contraseña.
-     */
     protected $hidden = [
         'clave',
     ];
